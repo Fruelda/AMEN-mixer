@@ -214,13 +214,13 @@ function connect() {
                 "WebSocket disconnected"
             )
 
-            mixerStore.setConnected(
-                false
-            )
+            // mixerStore.setConnected(
+            //     false
+            // )
 
-            mixerStore.setLoading(
-                false
-            )
+            // mixerStore.setLoading(
+            //     false
+            // )
 
             socket = null
 

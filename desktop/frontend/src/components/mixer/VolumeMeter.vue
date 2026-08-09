@@ -138,8 +138,8 @@ function handlePointerCancel() {
             touch-none
             cursor-pointer
         " :class="isDragging
-                ? 'cursor-grabbing'
-                : 'cursor-pointer'
+            ? 'cursor-grabbing'
+            : 'cursor-pointer'
             " @pointerdown="handlePointerDown" @pointermove="handlePointerMove" @pointerup="handlePointerUp"
         @pointercancel="handlePointerCancel">
         <!-- TRACK -->
@@ -165,8 +165,8 @@ function handlePointerCancel() {
                     transition-colors
                     duration-75
                 " :class="index <= activeSegments
-                        ? colorClass
-                        : 'bg-slate-800'
+                    ? colorClass
+                    : 'bg-slate-800'
                     " />
         </div>
     </div>

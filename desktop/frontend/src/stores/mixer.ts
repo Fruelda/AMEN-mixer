@@ -15,21 +15,6 @@ import {
 } from "../composables/useRealtime"
 
 
-/*
-|--------------------------------------------------------------------------
-| MOCK CHANNELS
-|--------------------------------------------------------------------------
-|
-| Dipakai ketika frontend dibuka melalui browser biasa.
-|
-| npm run dev
-| http://localhost:5173
-|
-| Browser tidak mempunyai Wails Go binding.
-|
-|--------------------------------------------------------------------------
-*/
-
 const mockChannels: MixerChannel[] = [
 
   {
@@ -85,12 +70,6 @@ const mockChannels: MixerChannel[] = [
 ]
 
 
-/*
-|--------------------------------------------------------------------------
-| WAILS ENVIRONMENT CHECK
-|--------------------------------------------------------------------------
-*/
-
 function isWailsEnvironment(): boolean {
 
   if (
@@ -100,32 +79,24 @@ function isWailsEnvironment(): boolean {
   }
 
 
-  /*
-  |--------------------------------------------------------------------------
-  | Wails injects runtime into window.
-  |--------------------------------------------------------------------------
-  */
-
   return (
     "__WAILS_RUNTIME__" in window
   )
+
 }
 
 
-/*
-|--------------------------------------------------------------------------
-| NORMALIZE VOLUME
-|--------------------------------------------------------------------------
-*/
 
 function normalizeVolume(
   volume: number
-): number {
+) {
 
   if (
     !Number.isFinite(volume)
   ) {
+
     return 0
+
   }
 
 
@@ -138,45 +109,76 @@ function normalizeVolume(
       )
     )
   )
+
 }
 
 
-/*
-|--------------------------------------------------------------------------
-| STORE
-|--------------------------------------------------------------------------
-*/
 
 export const mixerStore = reactive({
-
-  /*
-  |--------------------------------------------------------------------------
-  | CHANNELS
-  |--------------------------------------------------------------------------
-  */
 
   channels:
     [] as MixerChannel[],
 
 
-  /*
-  |--------------------------------------------------------------------------
-  | LOADING
-  |--------------------------------------------------------------------------
-  */
-
   loading:
     false,
 
 
+  deviceConnected:
+    false,
+
+
+
   /*
   |--------------------------------------------------------------------------
-  | DEVICE CONNECTION
+  | STATE CONTROL
   |--------------------------------------------------------------------------
   */
 
-  deviceConnected:
-    false,
+
+  setChannels(
+    channels: MixerChannel[]
+  ) {
+
+    this.channels =
+      channels.map(
+        channel => ({
+
+          ...channel,
+
+          volume:
+            normalizeVolume(
+              channel.volume
+            )
+
+        })
+      )
+
+
+  },
+
+
+
+  setLoading(
+    value: boolean
+  ) {
+
+    this.loading =
+      value
+
+  },
+
+
+
+  setConnected(
+    value: boolean
+  ) {
+
+    this.deviceConnected =
+      value
+
+  },
+
 
 
   /*
@@ -185,192 +187,100 @@ export const mixerStore = reactive({
   |--------------------------------------------------------------------------
   */
 
+
   async loadChannels() {
 
-    this.loading =
-      true
-
-
-    console.log(
-      "[MIXER] Loading channels..."
-    )
+    this.setLoading(true)
 
 
     try {
 
-      /*
-      |--------------------------------------------------------------------------
-      | BROWSER MODE
-      |--------------------------------------------------------------------------
-      */
 
       if (
         !isWailsEnvironment()
       ) {
 
-        console.log(
-          "[MIXER] Browser mode detected."
-        )
-
-        console.log(
-          "[MIXER] Using mock channels."
-        )
-
-
-        this.channels =
+        this.setChannels(
           structuredClone(
             mockChannels
           )
+        )
 
 
         return
+
       }
 
-
-      /*
-      |--------------------------------------------------------------------------
-      | WAILS MODE
-      |--------------------------------------------------------------------------
-      */
-
-      console.log(
-        "[MIXER] Wails environment detected."
-      )
 
 
       const result =
         await GetChannels()
 
 
-      console.log(
-        "[MIXER] Wails result:",
-        result
-      )
-
-
-      /*
-      |--------------------------------------------------------------------------
-      | BACKEND RETURNED CHANNELS
-      |--------------------------------------------------------------------------
-      */
 
       if (
-        Array.isArray(result) &&
+        Array.isArray(result)
+        &&
         result.length > 0
       ) {
 
-        this.channels =
-          result.map(
-            channel => ({
-
-              id:
-                channel.id,
-
-              name:
-                channel.name,
-
-              app:
-                channel.app,
-
-              volume:
-                normalizeVolume(
-                  channel.volume
-                ),
-
-              muted:
-                channel.muted,
-
-              connected:
-                channel.connected,
-
-              selected:
-                channel.selected,
-
-            })
-          )
+        this.setChannels(
+          result
+        )
 
 
         return
+
       }
 
 
-      /*
-      |--------------------------------------------------------------------------
-      | EMPTY BACKEND RESULT
-      |--------------------------------------------------------------------------
-      */
 
-      console.warn(
-        "[MIXER] GetChannels returned empty."
-      )
-
-      console.log(
-        "[MIXER] Using mock channels."
+      this.setChannels(
+        mockChannels
       )
 
 
-      this.channels =
-        structuredClone(
-          mockChannels
-        )
 
-    } catch (error) {
+    }
+    catch (error) {
 
-      /*
-      |--------------------------------------------------------------------------
-      | BACKEND ERROR
-      |--------------------------------------------------------------------------
-      */
 
       console.warn(
-        "[MIXER] Failed to load backend channels."
-      )
-
-      console.warn(
+        "[MIXER] Load failed",
         error
       )
 
 
-      /*
-      |--------------------------------------------------------------------------
-      | FALLBACK
-      |--------------------------------------------------------------------------
-      */
+      this.setChannels(
+        mockChannels
+      )
 
-      this.channels =
-        structuredClone(
-          mockChannels
-        )
 
-    } finally {
+    }
+    finally {
 
-      this.loading =
-        false
+
+      this.setLoading(false)
+
+
     }
 
   },
 
 
+
   /*
   |--------------------------------------------------------------------------
-  | SET VOLUME
-  |--------------------------------------------------------------------------
-  |
-  | Dipakai untuk perubahan dari UI.
-  |
-  | Contoh:
-  |
-  | HP
-  | Laptop
-  | Wails
-  |
+  | VOLUME
   |--------------------------------------------------------------------------
   */
 
+
   setVolume(
     id: number,
-    volume: number,
+    volume: number
   ) {
+
 
     const channel =
       this.channels.find(
@@ -379,205 +289,138 @@ export const mixerStore = reactive({
       )
 
 
-    if (!channel) {
-
-      console.warn(
-        `[MIXER] Channel ${id} not found.`
-      )
-
+    if (!channel)
       return
-    }
 
 
-    const normalized =
+
+    const value =
       normalizeVolume(
         volume
       )
 
 
-    /*
-    |--------------------------------------------------------------------------
-    | UPDATE LOCAL UI
-    |--------------------------------------------------------------------------
-    */
 
     channel.volume =
-      normalized
+      value
 
 
-    console.log(
-      `[MIXER] LOCAL ${channel.name}: ${normalized}%`
-    )
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | BROADCAST TO OTHER DEVICES
-    |--------------------------------------------------------------------------
-    */
 
     sendRealtime({
 
       type:
         "CHANNEL_UPDATE",
 
+
       channel: {
 
         id:
           channel.id,
 
+
         volume:
-          normalized,
+          value,
+
 
         muted:
-          channel.muted,
+          channel.muted
 
-      },
+      }
 
     })
+
 
   },
 
 
+
   /*
   |--------------------------------------------------------------------------
-  | APPLY REMOTE UPDATE
-  |--------------------------------------------------------------------------
-  |
-  | Dipanggil ketika:
-  |
-  | HP
-  | Laptop
-  | Wails lain
-  |
-  | mengirim perubahan melalui WebSocket.
-  |
-  | JANGAN panggil setVolume() di sini.
-  |
+  | REMOTE UPDATE
   |--------------------------------------------------------------------------
   */
+
 
   applyRemoteUpdate(
     message: RealtimeMessage
   ) {
 
-    /*
-    |--------------------------------------------------------------------------
-    | CHECK MESSAGE TYPE
-    |--------------------------------------------------------------------------
-    */
 
     if (
       message.type !==
       "CHANNEL_UPDATE"
     ) {
+
       return
+
     }
 
 
-    /*
-    |--------------------------------------------------------------------------
-    | CHECK CHANNEL
-    |--------------------------------------------------------------------------
-    */
 
     if (
       !message.channel
     ) {
+
       return
+
     }
 
 
-    const remote =
-      message.channel
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | FIND LOCAL CHANNEL
-    |--------------------------------------------------------------------------
-    */
 
     const channel =
       this.channels.find(
         item =>
           item.id ===
-          remote.id
+          message.channel?.id
       )
 
 
-    if (!channel) {
 
-      console.warn(
-        `[MIXER] Remote channel ${remote.id} not found.`
-      )
-
+    if (!channel)
       return
-    }
 
 
-    /*
-    |--------------------------------------------------------------------------
-    | UPDATE VOLUME
-    |--------------------------------------------------------------------------
-    */
 
     if (
-      typeof remote.volume ===
+      typeof message.channel.volume ===
       "number"
     ) {
 
       channel.volume =
         normalizeVolume(
-          remote.volume
+          message.channel.volume
         )
+
     }
 
 
-    /*
-    |--------------------------------------------------------------------------
-    | UPDATE MUTE
-    |--------------------------------------------------------------------------
-    */
 
     if (
-      typeof remote.muted ===
+      typeof message.channel.muted ===
       "boolean"
     ) {
 
       channel.muted =
-        remote.muted
+        message.channel.muted
+
     }
 
-
-    console.log(
-      `[MIXER] REMOTE ${channel.name}: ${channel.volume}%`
-    )
 
   },
 
 
+
   /*
   |--------------------------------------------------------------------------
-  | HANDLE ESP32 COMMAND
+  | ESP32 COMMAND
   |--------------------------------------------------------------------------
   */
+
 
   handleCommand(
     command: MixerCommand
   ) {
 
-    console.log(
-      "[MIXER] ESP32:",
-      command
-    )
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | FIND CHANNEL
-    |--------------------------------------------------------------------------
-    */
 
     const channel =
       this.channels.find(
@@ -587,50 +430,30 @@ export const mixerStore = reactive({
       )
 
 
-    if (!channel) {
-
-      console.warn(
-        `[MIXER] Channel ${command.channel} not found.`
-      )
-
+    if (!channel)
       return
-    }
 
 
-    /*
-    |--------------------------------------------------------------------------
-    | ROTARY ENCODER
-    |--------------------------------------------------------------------------
-    */
 
     if (
       command.type ===
       "ENC"
     ) {
 
-      const newVolume =
+      this.setVolume(
+        channel.id,
         channel.volume +
         command.value
-
-
-      this.setVolumeFromESP32(
-        channel.id,
-        newVolume
       )
 
-
-      return
     }
 
 
-    /*
-    |--------------------------------------------------------------------------
-    | BUTTON
-    |--------------------------------------------------------------------------
-    */
 
     if (
-      command.type === "BTN" &&
+      command.type ===
+      "BTN"
+      &&
       command.value === 1
     ) {
 
@@ -638,121 +461,24 @@ export const mixerStore = reactive({
         !channel.muted
 
 
-      console.log(
-        `[MIXER] ESP32 ${channel.name} muted: ${channel.muted}`
-      )
-
-
-      /*
-      |--------------------------------------------------------------------------
-      | BROADCAST MUTE
-      |--------------------------------------------------------------------------
-      */
-
-      sendRealtime({
-
-        type:
-          "CHANNEL_UPDATE",
-
-        channel: {
-
-          id:
-            channel.id,
-
-          volume:
-            channel.volume,
-
-          muted:
-            channel.muted,
-
-        },
-
-      })
     }
+
 
   },
 
 
-  /*
-  |--------------------------------------------------------------------------
-  | ESP32 SET VOLUME
-  |--------------------------------------------------------------------------
-  |
-  | Update UI Wails.
-  | Kemudian broadcast ke HP/laptop.
-  |
-  |--------------------------------------------------------------------------
-  */
 
   setVolumeFromESP32(
     id: number,
-    volume: number,
+    volume: number
   ) {
 
-    const channel =
-      this.channels.find(
-        item =>
-          item.id === id
-      )
-
-
-    if (!channel) {
-
-      console.warn(
-        `[MIXER] ESP32 channel ${id} not found.`
-      )
-
-      return
-    }
-
-
-    const normalized =
-      normalizeVolume(
-        volume
-      )
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | UPDATE WAILS UI
-    |--------------------------------------------------------------------------
-    */
-
-    channel.volume =
-      normalized
-
-
-    console.log(
-      `[MIXER] ESP32 ${channel.name}: ${normalized}%`
+    this.setVolume(
+      id,
+      volume
     )
 
-
-    /*
-    |--------------------------------------------------------------------------
-    | BROADCAST TO BROWSER DEVICES
-    |--------------------------------------------------------------------------
-    */
-
-    sendRealtime({
-
-      type:
-        "CHANNEL_UPDATE",
-
-      channel: {
-
-        id:
-          channel.id,
-
-        volume:
-          normalized,
-
-        muted:
-          channel.muted,
-
-      },
-
-    })
-
   },
+
 
 })
