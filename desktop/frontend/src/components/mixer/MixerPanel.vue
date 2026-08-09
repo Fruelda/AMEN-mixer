@@ -29,7 +29,7 @@ function toggleMute(id: number) {
 <template>
   <section class="
       w-full
-      max-w-[980px]
+      max-w-245
       rounded-[22px]
       border
       border-slate-700
@@ -99,7 +99,7 @@ function toggleMute(id: number) {
       <!-- EMPTY STATE -->
       <div v-if="mixerStore.channels.length === 0" class="
           flex
-          min-h-[220px]
+          min-h-55
           items-center
           justify-center
           text-center
