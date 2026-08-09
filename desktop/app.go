@@ -25,6 +25,32 @@ type App struct {
 }
 
 // =============================================================
+// AUDIO BRIDGE
+// =============================================================
+
+type audioBridge struct {
+	server *RealtimeServer
+}
+
+func (b *audioBridge) OnChannelUpdate(
+	channel models.Channel,
+) {
+
+	if b.server == nil {
+
+		return
+
+	}
+
+	b.server.BroadcastChannelUpdate(
+		channel.ID,
+		channel.Volume,
+		channel.Muted,
+	)
+
+}
+
+// =============================================================
 // NEW APP
 // =============================================================
 
@@ -77,6 +103,21 @@ func (a *App) startup(
 
 	fmt.Println(
 		"[APP] WebSocket: ws://0.0.0.0:8081/ws",
+	)
+
+	// =========================================================
+	// AUDIO EVENT BRIDGE
+	// =========================================================
+
+	a.audio.SetListener(
+		&audioBridge{
+
+			server: a.realtime,
+		},
+	)
+
+	fmt.Println(
+		"[AUDIO] EVENT BRIDGE CONNECTED",
 	)
 
 	// =========================================================
@@ -168,19 +209,15 @@ func (a *App) startup(
 					},
 				)
 
-				fmt.Println(
-					"[WAILS] serial-command emitted",
-				)
-
 			}
 
 			// =================================================
-			// WEBSOCKET BROADCAST
+			// WEBSOCKET COMMAND BROADCAST
 			// =================================================
 
 			if a.realtime != nil {
 
-				message :=
+				a.realtime.BroadcastJSON(
 					protocol.RealtimeMessage{
 
 						Type: protocol.MessageCommand,
@@ -193,23 +230,12 @@ func (a *App) startup(
 
 							Value: cmd.Value,
 						},
-					}
-
-				a.realtime.BroadcastJSON(
-					message,
-				)
-
-				fmt.Println(
-					"[WS] ESP32 command broadcasted",
+					},
 				)
 
 			}
 
 		}
-
-	// =========================================================
-	// START SERIAL LOOP
-	// =========================================================
 
 	go manager.Start()
 
@@ -241,5 +267,29 @@ func (a *App) Greet(
 func (a *App) GetChannels() []models.Channel {
 
 	return a.audio.GetChannels()
+
+}
+
+// =============================================================
+// SET VOLUME
+// =============================================================
+
+func (a *App) SetVolume(
+	id int,
+	volume int,
+) error {
+
+	if a.audio == nil {
+
+		return fmt.Errorf(
+			"audio manager not initialized",
+		)
+
+	}
+
+	return a.audio.SetVolume(
+		id,
+		volume,
+	)
 
 }

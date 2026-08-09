@@ -12,7 +12,13 @@ type Manager struct {
 	channels []models.Channel
 
 	windows *WindowsAudio
+
+	listener UpdateListener
 }
+
+// =====================================================
+// NEW
+// =====================================================
 
 func New() *Manager {
 
@@ -68,6 +74,19 @@ func New() *Manager {
 }
 
 // =====================================================
+// SET LISTENER
+// =====================================================
+
+func (m *Manager) SetListener(
+	listener UpdateListener,
+) {
+
+	m.listener =
+		listener
+
+}
+
+// =====================================================
 // GET CHANNELS
 // =====================================================
 
@@ -110,25 +129,47 @@ func (m *Manager) SetVolume(
 		channel :=
 			&m.channels[i]
 
-		if channel.ID == id {
+		if channel.ID != id {
 
-			channel.Volume =
-				volume
+			continue
 
-			// Forward ke Windows Audio
+		}
 
-			if m.windows != nil {
+		channel.Volume =
+			volume
 
-				return m.windows.SetVolume(
+		updated :=
+			*channel
+
+		// Windows Audio
+
+		if m.windows != nil {
+
+			err :=
+				m.windows.SetVolume(
 					channel.App,
 					volume,
 				)
 
+			if err != nil {
+
+				return err
+
 			}
 
-			return nil
+		}
+
+		// Notify realtime bridge
+
+		if m.listener != nil {
+
+			m.listener.OnChannelUpdate(
+				updated,
+			)
 
 		}
+
+		return nil
 
 	}
 
@@ -137,7 +178,7 @@ func (m *Manager) SetVolume(
 }
 
 // =====================================================
-// FIND CHANNEL
+// GET SINGLE CHANNEL
 // =====================================================
 
 func (m *Manager) GetChannel(
@@ -148,14 +189,14 @@ func (m *Manager) GetChannel(
 
 	defer m.mutex.RUnlock()
 
-	for i := range m.channels {
+	for _, channel := range m.channels {
 
-		if m.channels[i].ID == id {
+		if channel.ID == id {
 
-			channel :=
-				m.channels[i]
+			copy :=
+				channel
 
-			return &channel
+			return &copy
 
 		}
 

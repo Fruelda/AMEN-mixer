@@ -3,284 +3,477 @@ import {
     onUnmounted,
 } from "vue"
 
+
 import {
     mixerStore,
 } from "../stores/mixer"
 
+
 import type {
     MixerCommand,
-    MixerSocketMessage,
+    RealtimeMessage,
 } from "../types/mixer"
 
 
-let socket: WebSocket | null = null
+
+let socket:
+    WebSocket | null = null
+
+
 
 let reconnectTimer:
     ReturnType<typeof setTimeout> | null = null
 
-let manuallyClosed = false
 
+
+let manuallyClosed =
+    false
+
+
+
+// ============================================================
+// WEBSOCKET URL
+// ============================================================
 
 function getWebSocketUrl() {
-
-    /*
-    |--------------------------------------------------------------------------
-    | VITE_WS_URL
-    |--------------------------------------------------------------------------
-    |
-    | Kalau ada:
-    |
-    | VITE_WS_URL=ws://192.168.1.10:8765/ws
-    |
-    | pakai itu.
-    |
-    */
 
     const envUrl =
         import.meta.env.VITE_WS_URL
 
+
+
     if (envUrl) {
+
         return envUrl
+
     }
 
 
-    /*
-    |--------------------------------------------------------------------------
-    | Browser
-    |--------------------------------------------------------------------------
-    */
 
     const host =
         window.location.hostname
 
-    return `ws://${host}:8765/ws`
+
+
+    return (
+        `ws://${host}:8081/ws`
+    )
 
 }
 
 
+
+// ============================================================
+// RECONNECT
+// ============================================================
+
 function scheduleReconnect() {
 
+
     if (manuallyClosed) {
+
         return
+
     }
 
+
+
     if (reconnectTimer) {
+
         return
+
     }
+
+
 
     reconnectTimer =
         setTimeout(() => {
 
-            reconnectTimer = null
+
+            reconnectTimer =
+                null
+
+
 
             connect()
+
 
         }, 2000)
 
 }
 
 
+
+// ============================================================
+// MESSAGE HANDLER
+// ============================================================
+
 function handleMessage(
     event: MessageEvent
 ) {
 
+
     try {
+
 
         const message =
             JSON.parse(
                 event.data
-            ) as MixerSocketMessage
+            )
+
+
 
 
         console.log(
-            "WS ←",
+            "[WS RECEIVE]",
             message
         )
 
 
-        /*
-        |--------------------------------------------------------------------------
-        | FULL STATE
-        |--------------------------------------------------------------------------
-        */
+
+        // ======================================================
+        // FULL STATE
+        // ======================================================
+
 
         if (
             message.type === "STATE"
         ) {
 
-            mixerStore.setChannels(
+
+            if (
                 message.channels
-            )
+            ) {
+
+                mixerStore.setChannels(
+                    message.channels
+                )
+
+            }
+
+
 
             mixerStore.setLoading(
                 false
             )
 
+
+
             return
+
         }
 
 
-        /*
-        |--------------------------------------------------------------------------
-        | ESP32 COMMAND
-        |--------------------------------------------------------------------------
-        */
+
+
+        // ======================================================
+        // CHANNEL UPDATE
+        // ======================================================
+
 
         if (
-            message.type === "COMMAND"
+            message.type ===
+            "CHANNEL_UPDATE"
         ) {
 
-            mixerStore.handleCommand(
-                message.command
+
+            mixerStore.applyRemoteUpdate(
+                message
             )
 
+
+
             return
+
         }
 
-    } catch (error) {
+
+
+
+        // ======================================================
+        // ESP32 COMMAND
+        // ======================================================
+
+
+        if (
+            message.type ===
+            "COMMAND"
+        ) {
+
+
+            if (
+                message.command
+            ) {
+
+                mixerStore.handleCommand(
+                    message.command
+                )
+
+            }
+
+
+
+            return
+
+        }
+
+
+
+
+        // ======================================================
+        // DEVICE STATUS
+        // ======================================================
+
+
+        if (
+            message.type ===
+            "DEVICE_STATUS"
+        ) {
+
+
+            if (
+                typeof message.connected ===
+                "boolean"
+            ) {
+
+
+                mixerStore.setConnected(
+                    message.connected
+                )
+
+            }
+
+
+            return
+
+        }
+
+
+
+    }
+    catch (error) {
+
 
         console.error(
-            "Invalid WebSocket message:",
+            "[WS] Invalid message",
             error,
             event.data
         )
 
+
     }
+
 
 }
 
 
+
+// ============================================================
+// CONNECT
+// ============================================================
+
 function connect() {
 
-    manuallyClosed = false
+
+    manuallyClosed =
+        false
+
+
 
     const url =
         getWebSocketUrl()
 
 
+
     console.log(
-        "WebSocket connecting:",
+        "[WS] Connecting:",
         url
     )
 
 
+
     try {
 
+
         socket =
-            new WebSocket(url)
-
-
-        socket.onopen = () => {
-
-            console.log(
-                "WebSocket connected"
-            )
-
-            mixerStore.setConnected(
-                true
+            new WebSocket(
+                url
             )
 
 
-            socket?.send(
-                JSON.stringify({
-                    type: "HELLO",
-                    client:
-                        "browser",
-                })
-            )
 
-        }
+
+        socket.onopen =
+            () => {
+
+
+                console.log(
+                    "[WS] Connected"
+                )
+
+
+
+                mixerStore.setConnected(
+                    true
+                )
+
+
+
+                socket?.send(
+                    JSON.stringify({
+
+                        type:
+                            "HELLO",
+
+
+                        client:
+                            "browser",
+
+                    })
+                )
+
+
+            }
+
+
 
 
         socket.onmessage =
             handleMessage
 
 
-        socket.onerror = (
-            error
-        ) => {
-
-            console.error(
-                "WebSocket error:",
-                error
-            )
-
-        }
 
 
-        socket.onclose = () => {
+        socket.onerror =
+            (error) => {
 
-            console.warn(
-                "WebSocket disconnected"
-            )
 
-            // mixerStore.setConnected(
-            //     false
-            // )
+                console.error(
+                    "[WS] Error",
+                    error
+                )
 
-            // mixerStore.setLoading(
-            //     false
-            // )
 
-            socket = null
+            }
 
-            scheduleReconnect()
 
-        }
 
-    } catch (error) {
+
+        socket.onclose =
+            () => {
+
+
+                console.warn(
+                    "[WS] Closed"
+                )
+
+
+
+                mixerStore.setConnected(
+                    false
+                )
+
+
+
+                mixerStore.setLoading(
+                    false
+                )
+
+
+
+                socket =
+                    null
+
+
+
+                scheduleReconnect()
+
+
+            }
+
+
+
+
+    }
+    catch (error) {
+
 
         console.error(
-            "WebSocket connection failed:",
+            "[WS] Failed",
             error
         )
+
+
 
         mixerStore.setConnected(
             false
         )
 
+
+
         scheduleReconnect()
+
 
     }
 
 }
 
 
+
+// ============================================================
+// DISCONNECT
+// ============================================================
+
 function disconnect() {
 
-    manuallyClosed = true
+
+    manuallyClosed =
+        true
+
+
 
     if (reconnectTimer) {
+
 
         clearTimeout(
             reconnectTimer
         )
 
-        reconnectTimer = null
+
+
+        reconnectTimer =
+            null
 
     }
+
+
 
 
     if (socket) {
 
+
         socket.close()
 
-        socket = null
+
+
+        socket =
+            null
 
     }
+
 
 }
 
 
-/*
-|--------------------------------------------------------------------------
-| SEND
-|--------------------------------------------------------------------------
-*/
+
+// ============================================================
+// SEND
+// ============================================================
 
 function send(
     message: object
 ) {
+
 
     if (
         !socket ||
@@ -288,13 +481,17 @@ function send(
         WebSocket.OPEN
     ) {
 
+
         console.warn(
-            "WebSocket belum connected"
+            "[WS] Not connected"
         )
+
+
 
         return false
 
     }
+
 
 
     socket.send(
@@ -303,75 +500,28 @@ function send(
         )
     )
 
+
+
     return true
 
 }
 
 
-/*
-|--------------------------------------------------------------------------
-| TOUCH VOLUME
-|--------------------------------------------------------------------------
-*/
 
-export function setVolume(
-    channel: number,
-    value: number
-) {
-
-    return send({
-
-        type: "SET_VOLUME",
-
-        channel,
-
-        value: Math.max(
-            0,
-            Math.min(
-                100,
-                Math.round(value)
-            )
-        ),
-
-    })
-
-}
-
-
-/*
-|--------------------------------------------------------------------------
-| MUTE
-|--------------------------------------------------------------------------
-*/
-
-export function toggleMute(
-    channel: number
-) {
-
-    return send({
-
-        type: "TOGGLE_MUTE",
-
-        channel,
-
-    })
-
-}
-
-
-/*
-|--------------------------------------------------------------------------
-| GENERIC COMMAND
-|--------------------------------------------------------------------------
-*/
+// ============================================================
+// SEND COMMAND
+// ============================================================
 
 export function sendCommand(
     command: MixerCommand
 ) {
 
+
     return send({
 
-        type: "COMMAND",
+        type:
+            "COMMAND",
+
 
         command,
 
@@ -380,26 +530,32 @@ export function sendCommand(
 }
 
 
-/*
-|--------------------------------------------------------------------------
-| COMPOSABLE
-|--------------------------------------------------------------------------
-*/
+
+// ============================================================
+// COMPOSABLE
+// ============================================================
 
 export function useMixerSocket() {
 
+
     onMounted(() => {
+
 
         connect()
 
+
     })
+
 
 
     onUnmounted(() => {
 
+
         disconnect()
 
+
     })
+
 
 
     return {
@@ -408,12 +564,9 @@ export function useMixerSocket() {
 
         disconnect,
 
-        setVolume,
-
-        toggleMute,
-
         sendCommand,
 
     }
+
 
 }

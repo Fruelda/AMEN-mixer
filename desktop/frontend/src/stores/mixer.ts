@@ -14,6 +14,8 @@ import {
   sendRealtime,
 } from "../composables/useRealtime"
 
+import { SetVolume } from "../../wailsjs/go/main/App"
+
 
 const mockChannels: MixerChannel[] = [
 
@@ -276,11 +278,10 @@ export const mixerStore = reactive({
   */
 
 
-  setVolume(
+  async setVolume(
     id: number,
     volume: number
   ) {
-
 
     const channel =
       this.channels.find(
@@ -301,10 +302,40 @@ export const mixerStore = reactive({
 
 
 
+    // Update UI langsung
+
     channel.volume =
       value
 
 
+
+    try {
+
+      await SetVolume(
+        id,
+        value
+      )
+
+
+      console.log(
+        `[MIXER] Backend volume ${channel.name}: ${value}%`
+      )
+
+
+    } catch (error) {
+
+
+      console.error(
+        "[MIXER] SetVolume failed:",
+        error
+      )
+
+
+    }
+
+
+
+    // Broadcast ke client lain
 
     sendRealtime({
 

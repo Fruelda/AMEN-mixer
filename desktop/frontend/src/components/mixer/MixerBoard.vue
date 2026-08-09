@@ -130,7 +130,7 @@ function toggleMute(
       <!-- LOADING -->
       <div v-if="isLoading" class="
                     flex
-                    min-h-[300px]
+                    min-h-75
                     items-center
                     justify-center
                     text-slate-500
@@ -152,7 +152,7 @@ function toggleMute(
       <!-- EMPTY -->
       <div v-else class="
                     flex
-                    min-h-[300px]
+                    min-h-75
                     items-center
                     justify-center
                     text-slate-500
