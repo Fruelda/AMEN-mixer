@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from "vue"
+// import bgImage from "../../assets/images/amen-bg.png"
 
 import ChannelRow from "./ChannelRow.vue"
 
@@ -43,122 +44,320 @@ function toggleMute(
 }
 </script>
 
-<template>
-  <main class="
-            min-h-screen
-            bg-[#02070b]
-            px-4
-            py-6
-            text-white
 
-            sm:px-6
-            lg:px-10
+<template>
+
+  <main class="
+      relative
+      min-h-screen
+      w-full
+
+      bg-cover
+      bg-center
+      bg-fixed
+
+      px-2
+      py-1
+
+      landscape:px-1
+      landscape:py-0
+
+      sm:px-6
+      sm:py-6
+
+      lg:px-10
+    " :style="{
+      backgroundImage: `
+        linear-gradient(
+          rgba(2,8,13,0.45),
+          rgba(2,8,13,0.65)
+        ),
+        url('/amen-bg.png')
+      `
+    }">
+
+
+    <div class="relative z-10">
+
+
+      <!-- HEADER -->
+
+      <header class="
+          mx-auto
+
+          mb-1
+
+          flex
+          max-w-[1800px]
+
+          items-center
+          justify-between
+
+
+          rounded-lg
+
+          border
+          border-white/10
+
+          bg-black/20
+
+          px-2
+          py-1
+
+
+          backdrop-blur-md
+
+
+          landscape:mb-0
+
+
+          sm:mb-6
+          sm:px-6
+          sm:py-4
         ">
-    <!-- HEADER -->
-    <header class="
-                mx-auto
-                mb-6
-                flex
-                max-w-[1800px]
-                items-center
-                justify-between
+
+
+        <div>
+
+
+          <div class="
+              text-[8px]
+
+              font-bold
+
+              uppercase
+
+              tracking-[0.3em]
+
+              text-cyan-400
+
+
+              landscape:text-[7px]
+
+
+              sm:text-sm
             ">
-      <div>
-        <div class="
-                        text-sm
-                        font-bold
-                        uppercase
-                        tracking-[0.35em]
-                        text-cyan-400
-                    ">
-          AMEN MIXER
+            AMEN MIXER
+          </div>
+
+
+
+          <h1 class="
+              mt-0
+
+              text-lg
+
+              font-black
+
+              tracking-tight
+
+              text-white
+
+
+              landscape:text-base
+
+
+              sm:text-4xl
+
+              lg:text-5xl
+            ">
+            WINDOWS MIXER
+          </h1>
+
+
         </div>
 
-        <h1 class="
-                        mt-2
-                        text-5xl
-                        font-black
-                        tracking-tight
-                        text-white
 
-                        max-md:text-4xl
-                    ">
-          WINDOWS MIXER
-        </h1>
-      </div>
 
-      <!-- STATUS -->
-      <div class="
-                    flex
-                    items-center
-                    gap-2
-                    rounded-full
-                    border
-                    border-emerald-500/40
-                    bg-emerald-500/5
-                    px-5
-                    py-2
-                    text-sm
-                    font-bold
-                    uppercase
-                    tracking-widest
-                    text-emerald-400
-                ">
-        <span class="
-                        h-2.5
-                        w-2.5
-                        rounded-full
-                        bg-emerald-400
-                        shadow-[0_0_12px_rgba(52,211,153,0.8)]
-                    " />
 
-        ACTIVE
-      </div>
-    </header>
 
-    <!-- MIXER -->
-    <section class="
-                mx-auto
-                max-w-[1800px]
-                overflow-hidden
-                rounded-3xl
-                border
-                border-slate-700/70
-                bg-[#061019]
-                shadow-2xl
-            ">
-      <!-- LOADING -->
-      <div v-if="isLoading" class="
-                    flex
-                    min-h-75
-                    items-center
-                    justify-center
-                    text-slate-500
-                ">
-        Loading mixer...
-      </div>
+        <!-- STATUS -->
 
-      <!-- CHANNELS -->
-      <template v-else-if="
-        channels.length > 0
-      ">
-        <ChannelRow v-for="channel in channels" :key="channel.id" :channel="channel" @set-volume="
-          setVolume
-        " @toggle-mute="
-          toggleMute
-        " />
-      </template>
 
-      <!-- EMPTY -->
-      <div v-else class="
-                    flex
-                    min-h-75
-                    items-center
-                    justify-center
-                    text-slate-500
-                ">
-        No mixer channels available
-      </div>
-    </section>
+        <div class="
+            flex
+
+            items-center
+
+            gap-1
+
+
+            rounded-full
+
+
+            border
+
+            border-emerald-400/30
+
+
+            bg-emerald-400/10
+
+
+            px-2
+
+            py-0.5
+
+
+            text-[8px]
+
+            font-bold
+
+            uppercase
+
+            tracking-widest
+
+
+            text-emerald-400
+
+
+            backdrop-blur-md
+
+
+            landscape:px-2
+
+            landscape:py-0
+
+
+            sm:px-5
+
+            sm:py-2
+
+            sm:text-sm
+          ">
+
+
+          <span class="
+              h-1.5
+
+              w-1.5
+
+
+              rounded-full
+
+
+              bg-emerald-400
+
+
+              shadow-[0_0_12px_rgba(52,211,153,0.8)]
+
+
+              sm:h-2.5
+
+              sm:w-2.5
+            " />
+
+
+          ACTIVE
+
+
+        </div>
+
+
+      </header>
+
+
+
+
+
+
+      <!-- MIXER -->
+
+
+      <section class="
+          mx-auto
+
+          w-full
+
+          max-w-[1800px]
+
+
+          overflow-hidden
+
+
+          rounded-xl
+
+
+          border
+
+          border-white/15
+
+
+          bg-black/35
+
+
+          backdrop-blur-xl
+
+
+          shadow-2xl
+
+
+          landscape:rounded-lg
+        ">
+
+
+
+        <div v-if="isLoading" class="
+            flex
+
+            min-h-24
+
+            items-center
+
+            justify-center
+
+            text-slate-300
+          ">
+
+          Loading mixer...
+
+        </div>
+
+
+
+
+
+        <div v-else-if="channels.length > 0" class="
+            flex
+
+            flex-col
+          ">
+
+
+          <ChannelRow v-for="channel in channels" :key="channel.id" :channel="channel" @set-volume="setVolume"
+            @toggle-mute="toggleMute" />
+
+
+        </div>
+
+
+
+
+
+        <div v-else class="
+            flex
+
+            min-h-24
+
+            items-center
+
+            justify-center
+
+            text-slate-300
+          ">
+
+          No mixer channels available
+
+        </div>
+
+
+
+      </section>
+
+
+    </div>
+
+
   </main>
+
+
 </template>

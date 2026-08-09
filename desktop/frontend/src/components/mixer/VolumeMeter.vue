@@ -131,43 +131,102 @@ function handlePointerCancel() {
 </script>
 
 <template>
+
+
     <div class="
-            relative
-            w-full
-            select-none
-            touch-none
-            cursor-pointer
-        " :class="isDragging
-            ? 'cursor-grabbing'
-            : 'cursor-pointer'
-            " @pointerdown="handlePointerDown" @pointermove="handlePointerMove" @pointerup="handlePointerUp"
+        relative
+  
+        w-full
+  
+        select-none
+  
+        touch-none
+      " :class="isDragging
+        ? 'cursor-grabbing'
+        : 'cursor-pointer'
+        " @pointerdown="handlePointerDown" @pointermove="handlePointerMove" @pointerup="handlePointerUp"
         @pointercancel="handlePointerCancel">
-        <!-- TRACK -->
+
+
+
         <div class="
-                flex
-                h-12
-                w-full
-                items-center
-                gap-[3px]
-                overflow-hidden
-                rounded-lg
-                border
-                border-slate-800
-                bg-slate-900
-                p-[3px]
-                shadow-inner
-            ">
+          flex
+  
+  
+          h-5
+  
+  
+          w-full
+  
+  
+          items-center
+  
+  
+          gap-[1px]
+  
+  
+          overflow-hidden
+  
+  
+          rounded
+  
+  
+          border
+  
+          border-white/10
+  
+  
+          bg-black/30
+  
+  
+          p-[2px]
+  
+  
+  
+          sm:h-7
+  
+  
+  
+          md:h-12
+  
+  
+          md:gap-[3px]
+  
+          md:rounded-lg
+  
+          md:p-[3px]
+        ">
+
+
+
             <div v-for="index in segmentCount" :key="index" class="
-                    h-full
-                    min-w-0
-                    flex-1
-                    rounded-[3px]
-                    transition-colors
-                    duration-75
-                " :class="index <= activeSegments
-                    ? colorClass
-                    : 'bg-slate-800'
-                    " />
+            h-full
+  
+            min-w-0
+  
+            flex-1
+  
+  
+            rounded-sm
+  
+  
+            transition-colors
+  
+            duration-75
+  
+  
+            md:rounded-[3px]
+          " :class="index <= activeSegments
+            ? colorClass
+            : 'bg-white/10'
+            " />
+
+
         </div>
+
+
+
     </div>
+
+
 </template>

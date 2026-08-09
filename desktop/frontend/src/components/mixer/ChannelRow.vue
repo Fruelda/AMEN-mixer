@@ -52,76 +52,187 @@ function getVolumeColor() {
 </script>
 
 <template>
+
   <div class="
-            grid
-            grid-cols-[160px_minmax(300px,1fr)_100px]
-            items-center
-            gap-6
-            border-b
-            border-slate-800/80
-            px-4
-            py-5
-            last:border-b-0
+      flex
+      items-center
 
-            max-md:grid-cols-[120px_minmax(220px,1fr)_80px]
-            max-md:gap-4
-        ">
-    <!-- CHANNEL -->
+      gap-1
+
+
+      border-b
+      border-white/10
+
+
+      px-2
+      py-[3px]
+
+
+      landscape:py-0
+
+
+      last:border-b-0
+
+
+      sm:gap-3
+      sm:px-3
+      sm:py-2
+
+
+      md:gap-6
+      md:px-8
+      md:py-5
+    ">
+
+
+    <!-- NAME -->
+
+
     <div class="
-                min-w-0
-            ">
-      <!-- NAME -->
-      <div class="
-                    truncate
-                    text-2xl
-                    font-bold
-                    text-white
+        w-16
+        shrink-0
 
-                    max-md:text-xl
-                ">
+
+        landscape:w-14
+
+
+        sm:w-24
+
+
+        md:w-40
+      ">
+
+
+      <div class="
+          truncate
+
+
+          text-xs
+
+          font-bold
+
+
+          text-white
+
+
+          landscape:text-[11px]
+
+
+          sm:text-base
+
+
+          md:text-2xl
+        ">
+
         {{ channel.name }}
+
       </div>
 
-      <!-- STATUS -->
+
+
       <div class="
-                    mt-1
-                    text-xs
-                    font-bold
-                    uppercase
-                    tracking-[0.2em]
-                " :class="channel.connected
-                    ? 'text-emerald-400'
-                    : 'text-slate-500'
-                  ">
+          text-[6px]
+
+          font-bold
+
+          uppercase
+
+          tracking-[0.12em]
+
+
+          landscape:text-[5px]
+
+
+          sm:text-[9px]
+
+
+          md:text-xs
+        " :class="channel.connected
+            ? 'text-emerald-400'
+            : 'text-slate-500'
+          ">
+
         {{
           channel.connected
-            ? "Connected"
-            : "Offline"
+            ? 'Connected'
+            : 'Offline'
         }}
+
       </div>
+
+
     </div>
 
-    <!-- VOLUME -->
-    <VolumeMeter :volume="channel.volume" :color="getVolumeColor()" @set-volume="
-      (volume) =>
-        emit(
-          'set-volume',
-          channel.id,
-          volume
-        )
-    " />
+
+
+
+
+    <!-- METER -->
+
+
+    <div class="
+        min-w-0
+        flex-1
+      ">
+
+      <VolumeMeter :volume="channel.volume" :color="getVolumeColor()" @set-volume="
+        volume =>
+          emit(
+            'set-volume',
+            channel.id,
+            volume
+          )
+      " />
+
+
+    </div>
+
+
+
+
 
     <!-- VALUE -->
-    <div class="
-                text-right
-                text-3xl
-                font-bold
-                tabular-nums
-                text-white
 
-                max-md:text-2xl
-            ">
+
+    <div class="
+        w-9
+
+        shrink-0
+
+
+        text-right
+
+
+        text-sm
+
+        font-bold
+
+
+        tabular-nums
+
+
+        text-white
+
+
+        landscape:text-xs
+
+
+        sm:w-12
+
+        sm:text-xl
+
+
+        md:w-24
+
+        md:text-3xl
+      ">
+
       {{ Math.round(channel.volume) }}%
+
     </div>
+
+
   </div>
+
+
 </template>
