@@ -1,0 +1,85 @@
+@import "tailwindcss";
+
+
+:root {
+
+  color-scheme: dark;
+
+  font-family:
+    Inter,
+    "Segoe UI",
+    Roboto,
+    Helvetica,
+    Arial,
+    sans-serif;
+
+  color: #f1f3f5;
+
+  background: #02080d;
+
+  font-synthesis: none;
+
+  text-rendering:
+    optimizeLegibility;
+
+  -webkit-font-smoothing:
+    antialiased;
+
+  -moz-osx-font-smoothing:
+    grayscale;
+
+}
+
+
+* {
+  box-sizing: border-box;
+}
+
+
+html,
+body,
+#app {
+
+  width: 100%;
+
+  min-width: 320px;
+
+  min-height: 100%;
+
+  margin: 0;
+
+}
+
+
+body {
+
+  min-height: 100vh;
+
+  overflow-x: hidden;
+
+  background:
+    radial-gradient(circle at top,
+      rgba(14,
+        116,
+        144,
+        0.12),
+      transparent 40%),
+    #02080d;
+
+}
+
+
+button,
+input {
+
+  font: inherit;
+
+}
+
+
+button {
+
+  -webkit-tap-highlight-color:
+    transparent;
+
+}
