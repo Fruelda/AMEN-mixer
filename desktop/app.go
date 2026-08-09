@@ -12,44 +12,81 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
+// =============================================================
+// APP
+// =============================================================
+
 type App struct {
-	ctx      context.Context
-	audio    *audio.Manager
+	ctx context.Context
+
+	audio *audio.Manager
+
 	realtime *RealtimeServer
 }
 
+// =============================================================
+// NEW APP
+// =============================================================
+
 func NewApp() *App {
+
 	return &App{
+
 		audio: audio.New(),
 	}
+
 }
 
-func (a *App) startup(ctx context.Context) {
+// =============================================================
+// STARTUP
+// =============================================================
 
-	a.ctx = ctx
+func (a *App) startup(
+	ctx context.Context,
+) {
 
-	fmt.Println("===================================")
-	fmt.Println("AMEN MIXER STARTING...")
-	fmt.Println("===================================")
+	a.ctx =
+		ctx
+
+	fmt.Println(
+		"===================================",
+	)
+
+	fmt.Println(
+		"AMEN MIXER STARTING...",
+	)
+
+	fmt.Println(
+		"===================================",
+	)
 
 	// =========================================================
 	// REALTIME SERVER
 	// =========================================================
 
-	a.realtime = NewRealtimeServer()
+	a.realtime =
+		NewRealtimeServer()
 
-	StartRealtimeServer(a.realtime)
+	StartRealtimeServer(
+		a.realtime,
+	)
 
-	fmt.Println("[APP] REALTIME SERVER STARTED")
-	fmt.Println("[APP] WebSocket: ws://0.0.0.0:8081/ws")
+	fmt.Println(
+		"[APP] REALTIME SERVER STARTED",
+	)
+
+	fmt.Println(
+		"[APP] WebSocket: ws://0.0.0.0:8081/ws",
+	)
 
 	// =========================================================
 	// SERIAL / ESP32
 	// =========================================================
 
-	manager, err := serial.New(
-		"/dev/cu.usbserial-1420",
-	)
+	manager, err :=
+		serial.New(
+			"/dev/cu.usbserial-1420",
+		)
 
 	if err != nil {
 
@@ -66,66 +103,62 @@ func (a *App) startup(ctx context.Context) {
 			"[SERIAL] Mixer tetap berjalan tanpa ESP32.",
 		)
 
-		// PENTING:
-		// Jangan return sebelum bagian lain diperlukan.
-		// Tapi karena realtime sudah jalan, kita cukup keluar
-		// dari fungsi startup.
 		return
+
 	}
 
-	fmt.Println("[SERIAL] CONNECTED!")
+	fmt.Println(
+		"[SERIAL] CONNECTED!",
+	)
 
 	// =========================================================
-	// ESP32 COMMAND
+	// ESP32 COMMAND HANDLER
 	// =========================================================
 
-	manager.OnCommand = func(
-		cmd *protocol.Command,
-	) {
+	manager.OnCommand =
+		func(
+			cmd *protocol.Command,
+		) {
 
-		fmt.Println("===================================")
-		fmt.Println("[SERIAL] COMMAND FROM ESP32")
-		fmt.Printf("[SERIAL] TYPE    : %s\n", cmd.Type)
-		fmt.Printf("[SERIAL] CHANNEL : %d\n", cmd.Channel)
-		fmt.Printf("[SERIAL] VALUE   : %d\n", cmd.Value)
-		fmt.Println("===================================")
-
-		// =====================================================
-		// 1. WAILS DESKTOP
-		// =====================================================
-
-		if a.ctx != nil {
-
-			runtime.EventsEmit(
-				a.ctx,
-				"serial-command",
-				map[string]any{
-
-					"type": cmd.Type,
-
-					"channel": cmd.Channel,
-
-					"value": cmd.Value,
-				},
+			fmt.Println(
+				"===================================",
 			)
 
 			fmt.Println(
-				"[WAILS] serial-command emitted",
+				"[SERIAL] COMMAND FROM ESP32",
 			)
-		}
 
-		// =====================================================
-		// 2. BROWSER / HP / LAPTOP
-		// =====================================================
+			fmt.Printf(
+				"[SERIAL] TYPE    : %s\n",
+				cmd.Type,
+			)
 
-		if a.realtime != nil {
+			fmt.Printf(
+				"[SERIAL] CHANNEL : %d\n",
+				cmd.Channel,
+			)
 
-			a.realtime.BroadcastJSON(
-				RealtimeMessage{
+			fmt.Printf(
+				"[SERIAL] VALUE   : %d\n",
+				cmd.Value,
+			)
 
-					Type: "ESP32_COMMAND",
+			fmt.Println(
+				"===================================",
+			)
 
-					Channel: map[string]any{
+			// =================================================
+			// WAILS EVENT
+			// =================================================
+
+			if a.ctx != nil {
+
+				runtime.EventsEmit(
+					a.ctx,
+
+					"serial-command",
+
+					map[string]any{
 
 						"type": cmd.Type,
 
@@ -133,17 +166,49 @@ func (a *App) startup(ctx context.Context) {
 
 						"value": cmd.Value,
 					},
-				},
-			)
+				)
 
-			fmt.Println(
-				"[WS] ESP32 command broadcasted",
-			)
+				fmt.Println(
+					"[WAILS] serial-command emitted",
+				)
+
+			}
+
+			// =================================================
+			// WEBSOCKET BROADCAST
+			// =================================================
+
+			if a.realtime != nil {
+
+				message :=
+					protocol.RealtimeMessage{
+
+						Type: protocol.MessageCommand,
+
+						Command: &protocol.MixerCommand{
+
+							Type: cmd.Type,
+
+							Channel: cmd.Channel,
+
+							Value: cmd.Value,
+						},
+					}
+
+				a.realtime.BroadcastJSON(
+					message,
+				)
+
+				fmt.Println(
+					"[WS] ESP32 command broadcasted",
+				)
+
+			}
+
 		}
-	}
 
 	// =========================================================
-	// START SERIAL
+	// START SERIAL LOOP
 	// =========================================================
 
 	go manager.Start()
@@ -151,6 +216,7 @@ func (a *App) startup(ctx context.Context) {
 	fmt.Println(
 		"[SERIAL] BACKGROUND SERIAL STARTED",
 	)
+
 }
 
 // =============================================================
@@ -165,6 +231,7 @@ func (a *App) Greet(
 		"Hello %s, It's show time!",
 		name,
 	)
+
 }
 
 // =============================================================
@@ -174,4 +241,5 @@ func (a *App) Greet(
 func (a *App) GetChannels() []models.Channel {
 
 	return a.audio.GetChannels()
+
 }

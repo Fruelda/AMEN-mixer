@@ -7,17 +7,10 @@ import (
 	"sync"
 	"time"
 
+	"desktop/backend/protocol"
+
 	"github.com/gorilla/websocket"
 )
-
-// ============================================================
-// MESSAGE
-// ============================================================
-
-type RealtimeMessage struct {
-	Type    string      `json:"type"`
-	Channel interface{} `json:"channel,omitempty"`
-}
 
 // ============================================================
 // CLIENT
@@ -25,7 +18,8 @@ type RealtimeMessage struct {
 
 type WSClient struct {
 	conn *websocket.Conn
-	mu   sync.Mutex
+
+	mu sync.Mutex
 }
 
 // ============================================================
@@ -34,7 +28,8 @@ type WSClient struct {
 
 type RealtimeServer struct {
 	clients map[*WSClient]bool
-	mu      sync.Mutex
+
+	mu sync.Mutex
 }
 
 // ============================================================
@@ -42,10 +37,14 @@ type RealtimeServer struct {
 // ============================================================
 
 var upgrader = websocket.Upgrader{
+
 	CheckOrigin: func(r *http.Request) bool {
-		// Development LAN.
-		// Nanti kalau production sebaiknya dibatasi.
+
+		// Development mode.
+		// Production sebaiknya dibatasi.
+
 		return true
+
 	},
 }
 
@@ -54,9 +53,12 @@ var upgrader = websocket.Upgrader{
 // ============================================================
 
 func NewRealtimeServer() *RealtimeServer {
+
 	return &RealtimeServer{
+
 		clients: make(map[*WSClient]bool),
 	}
+
 }
 
 // ============================================================
@@ -67,105 +69,102 @@ func (s *RealtimeServer) HandleWebSocket(
 	w http.ResponseWriter,
 	r *http.Request,
 ) {
-	log.Println("===================================")
-	log.Println("[WS] Incoming request")
-	log.Println("[WS] Method:", r.Method)
-	log.Println("[WS] URL:", r.URL.String())
-	log.Println("[WS] Remote:", r.RemoteAddr)
-	log.Println("[WS] Connection:", r.Header.Get("Connection"))
-	log.Println("[WS] Upgrade:", r.Header.Get("Upgrade"))
-	log.Println("===================================")
 
-	// --------------------------------------------------------
-	// UPGRADE HTTP -> WEBSOCKET
-	// --------------------------------------------------------
+	log.Println("[WS] Incoming connection")
 
-	conn, err := upgrader.Upgrade(
-		w,
-		r,
-		nil,
-	)
+	conn, err :=
+		upgrader.Upgrade(
+			w,
+			r,
+			nil,
+		)
 
 	if err != nil {
+
 		log.Println(
 			"[WS] Upgrade error:",
 			err,
 		)
 
 		return
+
 	}
 
-	client := &WSClient{
-		conn: conn,
-	}
+	client :=
+		&WSClient{
 
-	// --------------------------------------------------------
-	// REGISTER CLIENT
-	// --------------------------------------------------------
+			conn: conn,
+		}
+
+	// Register
 
 	s.mu.Lock()
 
 	s.clients[client] = true
 
-	clientCount := len(s.clients)
+	total :=
+		len(s.clients)
 
 	s.mu.Unlock()
 
 	log.Printf(
-		"[WS] Client connected. Total: %d\n",
-		clientCount,
+		"[WS] Client connected: %d\n",
+		total,
 	)
-
-	// --------------------------------------------------------
-	// CLEANUP
-	// --------------------------------------------------------
 
 	defer func() {
 
-		s.removeClient(client)
+		s.removeClient(
+			client,
+		)
 
-		_ = conn.Close()
+		_ =
+			conn.Close()
 
 	}()
 
-	// --------------------------------------------------------
-	// READ LOOP
-	// --------------------------------------------------------
-
 	for {
 
-		messageType, message, err :=
+		messageType, data, err :=
 			conn.ReadMessage()
 
 		if err != nil {
 
-			log.Printf(
-				"[WS] Client disconnected: %v\n",
+			log.Println(
+				"[WS] Disconnect:",
 				err,
 			)
 
 			break
+
 		}
 
-		// ----------------------------------------------------
-		// ONLY ACCEPT TEXT
-		// ----------------------------------------------------
-
 		if messageType != websocket.TextMessage {
+
 			continue
+
 		}
 
 		log.Println(
 			"[WS] Received:",
-			string(message),
+			string(data),
 		)
 
-		// ----------------------------------------------------
-		// BROADCAST TO ALL CLIENTS
-		// ----------------------------------------------------
+		/*
 
-		s.broadcast(message)
+			Sementara relay.
+
+			Nanti COMMAND akan masuk
+			ke handler backend.
+
+		*/
+
+		s.broadcast(
+			data,
+		)
+
 	}
+
 }
 
 // ============================================================
@@ -175,81 +174,64 @@ func (s *RealtimeServer) HandleWebSocket(
 func (s *RealtimeServer) removeClient(
 	client *WSClient,
 ) {
-	s.mu.Lock()
-
-	_, exists := s.clients[client]
-
-	if exists {
-		delete(
-			s.clients,
-			client,
-		)
-	}
-
-	clientCount := len(s.clients)
-
-	s.mu.Unlock()
-
-	if exists {
-
-		log.Printf(
-			"[WS] Client disconnected. Total: %d\n",
-			clientCount,
-		)
-	}
-}
-
-// ============================================================
-// BROADCAST RAW MESSAGE
-// ============================================================
-
-func (s *RealtimeServer) broadcast(
-	message []byte,
-) {
-
-	log.Println(
-		"[WS] BROADCAST TO CLIENTS:",
-		string(message),
-	)
-
-	// ========================================================
-	// COPY CLIENT LIST
-	// ========================================================
 
 	s.mu.Lock()
 
-	clients := make(
-		[]*WSClient,
-		0,
-		len(s.clients),
+	delete(
+		s.clients,
+		client,
 	)
 
-	for client := range s.clients {
-		clients = append(
-			clients,
-			client,
-		)
-	}
+	total :=
+		len(s.clients)
 
 	s.mu.Unlock()
 
 	log.Printf(
-		"[WS] Broadcasting to %d clients\n",
-		len(clients),
+		"[WS] Client removed: %d\n",
+		total,
 	)
 
-	// ========================================================
-	// SEND TO ALL CLIENTS
-	// ========================================================
+}
+
+// ============================================================
+// BROADCAST RAW
+// ============================================================
+
+func (s *RealtimeServer) broadcast(
+	data []byte,
+) {
+
+	s.mu.Lock()
+
+	clients :=
+		make(
+			[]*WSClient,
+			0,
+			len(s.clients),
+		)
+
+	for client := range s.clients {
+
+		clients =
+			append(
+				clients,
+				client,
+			)
+
+	}
+
+	s.mu.Unlock()
 
 	for _, client := range clients {
 
 		client.mu.Lock()
 
-		err := client.conn.WriteMessage(
-			websocket.TextMessage,
-			message,
-		)
+		err :=
+			client.conn.WriteMessage(
+				websocket.TextMessage,
+				data,
+			)
 
 		client.mu.Unlock()
 
@@ -260,17 +242,14 @@ func (s *RealtimeServer) broadcast(
 				err,
 			)
 
-			s.removeClient(client)
+			s.removeClient(
+				client,
+			)
 
-			_ = client.conn.Close()
-
-			continue
 		}
 
-		log.Println(
-			"[WS] Message sent successfully",
-		)
 	}
+
 }
 
 // ============================================================
@@ -278,27 +257,87 @@ func (s *RealtimeServer) broadcast(
 // ============================================================
 
 func (s *RealtimeServer) BroadcastJSON(
-	message RealtimeMessage,
+	message protocol.RealtimeMessage,
 ) {
+
 	data, err :=
-		json.Marshal(message)
+		json.Marshal(
+			message,
+		)
 
 	if err != nil {
 
 		log.Println(
-			"[WS] JSON marshal error:",
+			"[WS] Marshal error:",
 			err,
 		)
 
 		return
+
 	}
 
 	log.Println(
-		"[WS] Broadcasting:",
+		"[WS] Broadcast:",
 		string(data),
 	)
 
-	s.broadcast(data)
+	s.broadcast(
+		data,
+	)
+
+}
+
+// ============================================================
+// CHANNEL UPDATE HELPER
+// ============================================================
+
+func (s *RealtimeServer) BroadcastChannelUpdate(
+	id int,
+	volume int,
+	muted bool,
+) {
+
+	message :=
+		protocol.RealtimeMessage{
+
+			Type: protocol.MessageChannelUpdate,
+
+			Channel: &protocol.ChannelUpdate{
+
+				ID: id,
+
+				Volume: &volume,
+
+				Muted: &muted,
+			},
+		}
+
+	s.BroadcastJSON(
+		message,
+	)
+
+}
+
+// ============================================================
+// DEVICE STATUS
+// ============================================================
+
+func (s *RealtimeServer) BroadcastDeviceStatus(
+	connected bool,
+) {
+
+	message :=
+		protocol.RealtimeMessage{
+
+			Type: protocol.MessageDeviceStatus,
+
+			Connected: &connected,
+		}
+
+	s.BroadcastJSON(
+		message,
+	)
+
 }
 
 // ============================================================
@@ -308,9 +347,13 @@ func (s *RealtimeServer) BroadcastJSON(
 func (s *RealtimeServer) ClientCount() int {
 
 	s.mu.Lock()
+
 	defer s.mu.Unlock()
 
-	return len(s.clients)
+	return len(
+		s.clients,
+	)
+
 }
 
 // ============================================================
@@ -321,28 +364,13 @@ func StartRealtimeServer(
 	server *RealtimeServer,
 ) {
 
-	mux := http.NewServeMux()
-
-	// --------------------------------------------------------
-	// WEBSOCKET ENDPOINT
-	// --------------------------------------------------------
+	mux :=
+		http.NewServeMux()
 
 	mux.HandleFunc(
 		"/ws",
 		server.HandleWebSocket,
 	)
-
-	// --------------------------------------------------------
-	// HEALTH CHECK
-	// --------------------------------------------------------
-	//
-	// Buka:
-	//
-	// http://IP-MAC:8081/
-	//
-	// Kalau keluar "AMEN MIXER REALTIME SERVER OK"
-	// berarti port 8081 memang kebuka.
-	//
 
 	mux.HandleFunc(
 		"/",
@@ -351,26 +379,21 @@ func StartRealtimeServer(
 			r *http.Request,
 		) {
 
-			w.Header().Set(
-				"Content-Type",
-				"text/plain",
-			)
+			w.Header().
+				Set(
+					"Content-Type",
+					"text/plain",
+				)
 
-			w.WriteHeader(
-				http.StatusOK,
-			)
+			_, _ =
+				w.Write(
+					[]byte(
+						"AMEN MIXER REALTIME SERVER OK\n",
+					),
+				)
 
-			_, _ = w.Write(
-				[]byte(
-					"AMEN MIXER REALTIME SERVER OK\n",
-				),
-			)
 		},
 	)
-
-	// --------------------------------------------------------
-	// START
-	// --------------------------------------------------------
 
 	go func() {
 
@@ -379,36 +402,38 @@ func StartRealtimeServer(
 		)
 
 		log.Println(
-			"[WS] REALTIME SERVER",
+			"[WS] AMEN REALTIME SERVER",
 		)
 
 		log.Println(
-			"[WS] Listening on 0.0.0.0:8081",
+			"[WS] Listening :8081",
 		)
 
 		log.Println(
-			"[WS] WebSocket: ws://0.0.0.0:8081/ws",
+			"[WS] WS endpoint ws://0.0.0.0:8081/ws",
 		)
 
-		log.Println(
-			"[WS] ===================================",
-		)
+		serverHTTP :=
+			&http.Server{
 
-		server := &http.Server{
-			Addr:              "0.0.0.0:8081",
-			Handler:           mux,
-			ReadHeaderTimeout: 5 * time.Second,
-		}
+				Addr: "0.0.0.0:8081",
 
-		err := server.ListenAndServe()
+				Handler: mux,
+
+				ReadHeaderTimeout: 5 * time.Second,
+			}
+
+		err :=
+			serverHTTP.ListenAndServe()
 
 		if err != nil &&
 			err != http.ErrServerClosed {
 
 			log.Println(
-				"[WS] Server stopped:",
+				"[WS] Server error:",
 				err,
 			)
+
 		}
 
 	}()

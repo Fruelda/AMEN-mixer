@@ -10,11 +10,15 @@ type Manager struct {
 	mutex sync.RWMutex
 
 	channels []models.Channel
+
+	windows *WindowsAudio
 }
 
 func New() *Manager {
 
 	return &Manager{
+
+		windows: NewWindowsAudio(),
 
 		channels: []models.Channel{
 
@@ -60,30 +64,103 @@ func New() *Manager {
 			},
 		},
 	}
+
 }
+
+// =====================================================
+// GET CHANNELS
+// =====================================================
 
 func (m *Manager) GetChannels() []models.Channel {
 
 	m.mutex.RLock()
+
 	defer m.mutex.RUnlock()
 
-	return m.channels
+	result :=
+		make(
+			[]models.Channel,
+			len(m.channels),
+		)
+
+	copy(
+		result,
+		m.channels,
+	)
+
+	return result
+
 }
 
-func (m *Manager) SetVolume(id int, volume int) {
+// =====================================================
+// SET VOLUME
+// =====================================================
+
+func (m *Manager) SetVolume(
+	id int,
+	volume int,
+) error {
 
 	m.mutex.Lock()
+
 	defer m.mutex.Unlock()
+
+	for i := range m.channels {
+
+		channel :=
+			&m.channels[i]
+
+		if channel.ID == id {
+
+			channel.Volume =
+				volume
+
+			// Forward ke Windows Audio
+
+			if m.windows != nil {
+
+				return m.windows.SetVolume(
+					channel.App,
+					volume,
+				)
+
+			}
+
+			return nil
+
+		}
+
+	}
+
+	return nil
+
+}
+
+// =====================================================
+// FIND CHANNEL
+// =====================================================
+
+func (m *Manager) GetChannel(
+	id int,
+) *models.Channel {
+
+	m.mutex.RLock()
+
+	defer m.mutex.RUnlock()
 
 	for i := range m.channels {
 
 		if m.channels[i].ID == id {
 
-			m.channels[i].Volume = volume
-			return
+			channel :=
+				m.channels[i]
+
+			return &channel
 
 		}
 
 	}
+
+	return nil
 
 }
