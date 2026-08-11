@@ -2,20 +2,26 @@ import { reactive } from "vue"
 
 import {
   GetChannels,
+  SetVolume
 } from "../../wailsjs/go/main/App"
+
 
 import type {
   MixerChannel,
   MixerCommand,
-  RealtimeMessage,
+  RealtimeMessage
 } from "../types/mixer"
 
+
 import {
-  sendRealtime,
+  sendRealtime
 } from "../composables/useRealtime"
 
-import { SetVolume } from "../../wailsjs/go/main/App"
 
+
+// ============================================================
+// MOCK DATA
+// ============================================================
 
 const mockChannels: MixerChannel[] = [
 
@@ -26,7 +32,7 @@ const mockChannels: MixerChannel[] = [
     volume: 100,
     muted: false,
     connected: true,
-    selected: false,
+    selected: false
   },
 
   {
@@ -36,7 +42,7 @@ const mockChannels: MixerChannel[] = [
     volume: 70,
     muted: false,
     connected: true,
-    selected: false,
+    selected: false
   },
 
   {
@@ -46,7 +52,7 @@ const mockChannels: MixerChannel[] = [
     volume: 55,
     muted: false,
     connected: true,
-    selected: false,
+    selected: false
   },
 
   {
@@ -56,7 +62,7 @@ const mockChannels: MixerChannel[] = [
     volume: 85,
     muted: false,
     connected: true,
-    selected: false,
+    selected: false
   },
 
   {
@@ -66,13 +72,18 @@ const mockChannels: MixerChannel[] = [
     volume: 60,
     muted: false,
     connected: false,
-    selected: false,
-  },
+    selected: false
+  }
 
 ]
 
 
-function isWailsEnvironment(): boolean {
+
+// ============================================================
+// ENV
+// ============================================================
+
+function isWailsEnvironment() {
 
   if (
     typeof window === "undefined"
@@ -89,6 +100,10 @@ function isWailsEnvironment(): boolean {
 
 
 
+// ============================================================
+// HELPER
+// ============================================================
+
 function normalizeVolume(
   volume: number
 ) {
@@ -96,9 +111,7 @@ function normalizeVolume(
   if (
     !Number.isFinite(volume)
   ) {
-
     return 0
-
   }
 
 
@@ -116,31 +129,34 @@ function normalizeVolume(
 
 
 
+// ============================================================
+// STORE
+// ============================================================
+
 export const mixerStore = reactive({
+
 
   channels:
     [] as MixerChannel[],
 
 
-  loading:
-    false,
+
+  loading: false,
 
 
-  deviceConnected:
-    false,
+  deviceConnected: false,
 
 
 
-  /*
-  |--------------------------------------------------------------------------
-  | STATE CONTROL
-  |--------------------------------------------------------------------------
-  */
+  // ============================================================
+  // STATE
+  // ============================================================
 
 
   setChannels(
     channels: MixerChannel[]
   ) {
+
 
     this.channels =
       channels.map(
@@ -161,14 +177,15 @@ export const mixerStore = reactive({
 
 
 
+
   setLoading(
     value: boolean
   ) {
 
-    this.loading =
-      value
+    this.loading = value
 
   },
+
 
 
 
@@ -176,23 +193,23 @@ export const mixerStore = reactive({
     value: boolean
   ) {
 
-    this.deviceConnected =
-      value
+    this.deviceConnected = value
 
   },
 
 
 
-  /*
-  |--------------------------------------------------------------------------
-  | LOAD CHANNELS
-  |--------------------------------------------------------------------------
-  */
+
+  // ============================================================
+  // LOAD
+  // ============================================================
 
 
   async loadChannels() {
 
+
     this.setLoading(true)
+
 
 
     try {
@@ -201,6 +218,7 @@ export const mixerStore = reactive({
       if (
         !isWailsEnvironment()
       ) {
+
 
         this.setChannels(
           structuredClone(
@@ -215,6 +233,7 @@ export const mixerStore = reactive({
 
 
 
+
       const result =
         await GetChannels()
 
@@ -225,6 +244,7 @@ export const mixerStore = reactive({
         &&
         result.length > 0
       ) {
+
 
         this.setChannels(
           result
@@ -267,27 +287,31 @@ export const mixerStore = reactive({
 
     }
 
+
+
   },
 
 
 
-  /*
-  |--------------------------------------------------------------------------
-  | VOLUME
-  |--------------------------------------------------------------------------
-  */
+
+
+  // ============================================================
+  // USER CHANGE
+  // ============================================================
 
 
   async setVolume(
     id: number,
-    volume: number
+    volume: number,
+    broadcast = true
   ) {
+
 
     const channel =
       this.channels.find(
-        item =>
-          item.id === id
+        item => item.id === id
       )
+
 
 
     if (!channel)
@@ -302,32 +326,55 @@ export const mixerStore = reactive({
 
 
 
-    // Update UI langsung
 
-    channel.volume =
-      value
+    // update UI
+
+    channel.volume = value
 
 
 
-    try {
 
-      await SetVolume(
-        id,
-        value
-      )
+
+    // WAILS AUDIO
+
+    if (
+      isWailsEnvironment()
+    ) {
+
+
+      try {
+
+
+        await SetVolume(
+          id,
+          value
+        )
+
+
+        console.log(
+          `[WAILS] ${channel.name}: ${value}%`
+        )
+
+
+      }
+      catch (error) {
+
+
+        console.warn(
+          "[WAILS] SetVolume failed",
+          error
+        )
+
+
+      }
+
+
+    }
+    else {
 
 
       console.log(
-        `[MIXER] Backend volume ${channel.name}: ${value}%`
-      )
-
-
-    } catch (error) {
-
-
-      console.error(
-        "[MIXER] SetVolume failed:",
-        error
+        `[BROWSER] ${channel.name}: ${value}%`
       )
 
 
@@ -335,74 +382,42 @@ export const mixerStore = reactive({
 
 
 
-    // Broadcast ke client lain
 
-    sendRealtime({
+    // broadcast hanya dari user input
 
-      type:
-        "CHANNEL_UPDATE",
-
-
-      channel: {
-
-        id:
-          channel.id,
+    if (
+      broadcast
+    ) {
 
 
-        volume:
-          value,
+      this.broadcastChannel(
+        id
+      )
 
 
-        muted:
-          channel.muted
+    }
 
-      }
-
-    })
 
 
   },
 
 
 
-  /*
-  |--------------------------------------------------------------------------
-  | REMOTE UPDATE
-  |--------------------------------------------------------------------------
-  */
 
 
-  applyRemoteUpdate(
-    message: RealtimeMessage
+  // ============================================================
+  // NETWORK SEND
+  // ============================================================
+
+
+  broadcastChannel(
+    id: number
   ) {
-
-
-    if (
-      message.type !==
-      "CHANNEL_UPDATE"
-    ) {
-
-      return
-
-    }
-
-
-
-    if (
-      !message.channel
-    ) {
-
-      return
-
-    }
-
 
 
     const channel =
       this.channels.find(
-        item =>
-          item.id ===
-          message.channel?.id
+        item => item.id === id
       )
 
 
@@ -412,40 +427,126 @@ export const mixerStore = reactive({
 
 
 
-    if (
-      typeof message.channel.volume ===
-      "number"
-    ) {
 
-      channel.volume =
-        normalizeVolume(
-          message.channel.volume
-        )
+    sendRealtime({
 
-    }
+      type: "CHANNEL_UPDATE",
 
 
+      channel: {
 
-    if (
-      typeof message.channel.muted ===
-      "boolean"
-    ) {
 
-      channel.muted =
-        message.channel.muted
+        id:
+          channel.id,
 
-    }
+
+        volume:
+          channel.volume,
+
+
+        muted:
+          channel.muted
+
+      }
+
+
+    })
+
 
 
   },
 
 
 
-  /*
-  |--------------------------------------------------------------------------
-  | ESP32 COMMAND
-  |--------------------------------------------------------------------------
-  */
+
+
+  // ============================================================
+  // RECEIVE NETWORK
+  // ============================================================
+
+
+  applyRemoteUpdate(
+    message: RealtimeMessage
+  ) {
+
+
+
+    if (
+      message.type !== "CHANNEL_UPDATE"
+    )
+      return
+
+
+
+    if (
+      !message.channel
+    )
+      return
+
+
+
+
+    const channel =
+      this.channels.find(
+        item =>
+          item.id === message.channel?.id
+      )
+
+
+
+    if (!channel)
+      return
+
+
+
+
+
+    // IMPORTANT
+    // jangan panggil setVolume()
+    // karena akan broadcast ulang
+
+
+
+    if (
+      typeof message.channel.volume === "number"
+    ) {
+
+
+      channel.volume =
+        normalizeVolume(
+          message.channel.volume
+        )
+
+
+
+    }
+
+
+
+
+    if (
+      typeof message.channel.muted === "boolean"
+    ) {
+
+
+      channel.muted =
+        message.channel.muted
+
+
+    }
+
+
+
+
+  },
+
+
+
+
+
+  // ============================================================
+  // ESP32 COMMAND
+  // ============================================================
 
 
   handleCommand(
@@ -456,9 +557,9 @@ export const mixerStore = reactive({
     const channel =
       this.channels.find(
         item =>
-          item.id ===
-          command.channel
+          item.id === command.channel
       )
+
 
 
     if (!channel)
@@ -466,36 +567,63 @@ export const mixerStore = reactive({
 
 
 
+
+
+    // ENCODER
+
     if (
-      command.type ===
-      "ENC"
+      command.type === "ENC"
     ) {
 
-      this.setVolume(
-        channel.id,
-        channel.volume +
-        command.value
+
+      channel.volume =
+        normalizeVolume(
+          channel.volume +
+          command.value
+        )
+
+
+
+      // kirim hasil ESP32 ke client lain
+
+      this.broadcastChannel(
+        channel.id
       )
+
+
 
     }
 
 
 
+
+
+    // BUTTON
+
     if (
-      command.type ===
-      "BTN"
+      command.type === "BTN"
       &&
       command.value === 1
     ) {
+
 
       channel.muted =
         !channel.muted
 
 
+
+      this.broadcastChannel(
+        channel.id
+      )
+
+
     }
 
 
+
   },
+
+
 
 
 
@@ -504,12 +632,16 @@ export const mixerStore = reactive({
     volume: number
   ) {
 
+
     this.setVolume(
       id,
-      volume
+      volume,
+      false
     )
 
-  },
+
+  }
+
 
 
 })

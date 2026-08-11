@@ -2,6 +2,9 @@
 
 #include "AudioManager.h"
 #include "Config.h"
+#include "NetworkManager.h"
+
+extern NetworkManager network;
 
 void EncoderManager::begin()
 {
@@ -54,7 +57,7 @@ void EncoderManager::begin()
     pinMode(EC6_DT, INPUT_PULLUP);
     pinMode(EC6_SW, INPUT_PULLUP);
 
-    // simpan posisi awal
+    // Simpan posisi awal
 
     lastCLK1 = digitalRead(EC1_CLK);
     lastCLK2 = digitalRead(EC2_CLK);
@@ -63,14 +66,18 @@ void EncoderManager::begin()
     lastCLK5 = digitalRead(EC5_CLK);
     lastCLK6 = digitalRead(EC6_CLK);
 
-    Serial.println("Encoder Manager Ready");
+    Serial.println(
+        "Encoder Manager Ready");
 }
 
 void EncoderManager::update(AudioManager &audio)
 {
+
     (void)audio;
 
-    // Rotary
+    // ==========================
+    // Rotary Encoder
+    // ==========================
 
     readEncoder(
         EC1_CLK,
@@ -108,17 +115,14 @@ void EncoderManager::update(AudioManager &audio)
         lastCLK6,
         6);
 
+    // ==========================
     // Button
+    // ==========================
 
     readButton(
         EC1_SW,
         lastButton1,
         1);
-
-    // readButton(
-    //     EC2_SW,
-    //     lastButton2,
-    //     2);
 
     readButton(
         EC3_SW,
@@ -142,63 +146,114 @@ void EncoderManager::update(AudioManager &audio)
 }
 
 void EncoderManager::readEncoder(
-    int clkPin,
-    int dtPin,
-    int &lastCLK,
-    int encoderID)
 
+    int clkPin,
+
+    int dtPin,
+
+    int &lastCLK,
+
+    int encoderID
+
+)
 {
 
-    int clk = digitalRead(clkPin);
+    int clk =
+        digitalRead(clkPin);
 
     if (clk != lastCLK)
     {
 
-        if (digitalRead(dtPin) != clk)
+        int direction;
+
+        if (
+            digitalRead(dtPin) !=
+            clk)
         {
 
-            Serial.printf(
-                "ENC,%d,1\n",
-                encoderID);
+            direction = 1;
         }
         else
         {
 
-            Serial.printf(
-                "ENC,%d,-1\n",
-                encoderID);
+            direction = -1;
         }
+
+        // Serial debug
+
+        Serial.printf(
+
+            "ENC,%d,%d\n",
+
+            encoderID,
+
+            direction
+
+        );
+
+        // Kirim ke AMEN Windows
+
+        network.sendEncoder(
+
+            encoderID,
+
+            direction
+
+        );
 
         lastCLK = clk;
     }
 }
 
 void EncoderManager::readButton(
-    int swPin,
-    bool &lastButton,
-    int encoderID)
 
+    int swPin,
+
+    bool &lastButton,
+
+    int encoderID
+
+)
 {
 
-    bool current = digitalRead(swPin) == LOW;
+    bool current =
+        digitalRead(swPin) ==
+        LOW;
 
     if (current != lastButton)
     {
 
-        if (millis() - lastDebounceTime > debounceDelay)
+        if (
+            millis() -
+                lastDebounceTime >
+            debounceDelay)
         {
 
-            lastDebounceTime = millis();
+            lastDebounceTime =
+                millis();
 
             if (current)
             {
 
                 Serial.printf(
+
                     "BTN,%d,0\n",
-                    encoderID);
+
+                    encoderID
+
+                );
+
+                network.sendEncoder(
+
+                    encoderID,
+
+                    0
+
+                );
             }
 
-            lastButton = current;
+            lastButton =
+                current;
         }
     }
 }

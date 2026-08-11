@@ -1,47 +1,46 @@
 <script setup lang="ts">
 
 import {
-  onMounted,
+  onMounted
 } from "vue"
 
 import MixerBoard from "./components/mixer/MixerBoard.vue"
 
 import {
-  mixerStore,
+  mixerStore
 } from "./stores/mixer"
 
 import {
-  useSerial,
-} from "./composables/useSerial"
+  useMixerSocket
+} from "./composables/useMixerSocket"
 
 import {
-  useRealtime,
-} from "./composables/useRealtime"
+  useSerial
+} from "./composables/useSerial"
 
 
-/*
-|--------------------------------------------------------------------------
-| INITIAL LOAD
-|--------------------------------------------------------------------------
-*/
+const mixerSocket =
+  useMixerSocket()
+
+
 
 onMounted(
   async () => {
 
+
     await mixerStore.loadChannels()
 
-  }
-)
+
+    mixerSocket.start()
 
 
-/*
-|--------------------------------------------------------------------------
-| ESP32 SERIAL
-|--------------------------------------------------------------------------
-*/
+  })
+
+
 
 useSerial(
   command => {
+
 
     console.log(
       "[APP] ESP32 COMMAND:",
@@ -53,31 +52,8 @@ useSerial(
       command
     )
 
-  }
-)
 
-
-/*
-|--------------------------------------------------------------------------
-| WEBSOCKET
-|--------------------------------------------------------------------------
-*/
-
-useRealtime(
-  message => {
-
-    console.log(
-      "[APP] REALTIME:",
-      message
-    )
-
-
-    mixerStore.applyRemoteUpdate(
-      message
-    )
-
-  }
-)
+  })
 
 </script>
 

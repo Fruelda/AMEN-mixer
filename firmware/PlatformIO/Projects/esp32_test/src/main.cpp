@@ -1,24 +1,43 @@
 #include <Arduino.h>
 
+#include "NetworkManager.h"
 #include "EncoderManager.h"
 #include "AudioManager.h"
-#include "Utils.h"
-#include "Config.h"
+
+NetworkManager network;
 
 EncoderManager encoder;
+
 AudioManager audio;
 
 void setup()
 {
-  Serial.begin(BAUD_RATE);
+
+  Serial.begin(
+      115200);
+
+  delay(1000);
+
+  Serial.println();
+
+  Serial.println(
+      "=== AMEN START ===");
+
+  network.begin();
 
   encoder.begin();
+
   audio.begin();
 
-  Utils::printHeader();
+  Serial.println(
+      "BOOT");
 }
 
 void loop()
 {
-  encoder.update(audio);
+
+  network.loop();
+
+  encoder.update(
+      audio);
 }

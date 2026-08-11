@@ -34,6 +34,19 @@ type RealtimeMessage struct {
 	Connected *bool `json:"connected,omitempty"`
 }
 
+/*================================
+// ESP32 DEVICE REGISTER
+================================
+*/
+
+type DeviceRegister struct {
+	Type string `json:"type"`
+
+	ID string `json:"id"`
+
+	Name string `json:"name"`
+}
+
 /*
 |--------------------------------------------------------------------------
 | CHANNEL

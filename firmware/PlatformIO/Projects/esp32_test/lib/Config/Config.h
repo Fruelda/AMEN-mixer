@@ -51,3 +51,31 @@
 #define EC6_CLK 21
 #define EC6_DT 38
 #define EC6_SW 39
+
+// ===============================
+// WIFI CONFIG
+// ===============================
+
+#define WIFI_SSID "Yoga"
+#define WIFI_PASSWORD "12345678"
+
+// ===============================
+// AMEN SERVER
+// ===============================
+
+#define AMEN_HOST "192.168.1.44"
+#define AMEN_PORT 8081
+#define AMEN_ENDPOINT "/ws"
+
+// ===============================
+// DEVICE
+// ===============================
+
+#define DEVICE_ID "amen-mixer-01"
+#define DEVICE_NAME "AMEN Hardware Mixer"
+
+// ===============================
+// SYSTEM
+// ===============================
+
+#define DEBUG_SERIAL true
