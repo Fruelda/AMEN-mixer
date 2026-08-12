@@ -1,19 +1,86 @@
-# README
+# AMEN Mixer Desktop
 
-## About
+Desktop host application for AMEN Mixer.
 
-This is the official Wails Vue template.
+Built with:
 
-You can configure the project by editing `wails.json`. More information about the project settings can be found
-here: https://wails.io/docs/reference/project-config
+* Wails
+* Go
+* Vue 3
+* TypeScript
+* Vite
+* WebSocket
+* mDNS
+* Serial communication
 
-## Live Development
+## Responsibilities
 
-To run in live development mode, run `wails dev` in the project directory. This will run a Vite development
-server that will provide very fast hot reload of your frontend changes. If you want to develop in a browser
-and have access to your Go methods, there is also a dev server that runs on http://localhost:34115. Connect
-to this in your browser, and you can call your Go code from devtools.
+The desktop application acts as the main AMEN Mixer host.
 
-## Building
+It is responsible for:
 
-To build a redistributable, production mode package, use `wails build`.
+* Running the Go backend
+* Running the realtime WebSocket server on port `8081`
+* Managing mixer state
+* Synchronizing desktop and mobile clients
+* Handling ESP32 serial communication
+* Advertising `amen-mixer.local` using mDNS
+* Providing the Wails desktop interface
+
+## Development
+
+Run from this directory:
+
+```bash
+wails dev
+```
+
+During development:
+
+```text
+Wails Desktop
+    ↓
+Go Backend
+    ↓
+WebSocket :8081
+```
+
+Mobile devices can access the development frontend using:
+
+```text
+http://amen-mixer.local:5173
+```
+
+Fallback using the host LAN IP:
+
+```text
+http://<HOST-IP>:5173
+```
+
+## Realtime Server
+
+Health endpoint:
+
+```text
+http://amen-mixer.local:8081/
+```
+
+WebSocket endpoint:
+
+```text
+ws://amen-mixer.local:8081/ws
+```
+
+The Wails desktop client connects locally using:
+
+```text
+ws://127.0.0.1:8081/ws
+```
+
+## Project Documentation
+
+See the main documentation:
+
+* [Project README](../README.md)
+* [Architecture](../docs/architecture.md)
+* [Development Guide](../docs/development.md)

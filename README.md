@@ -1,170 +1,310 @@
 # AMEN Mixer
 
-AMEN Mixer is a custom desktop audio mixer application designed to
-provide real-time control over Windows audio channels through a modern
-UI interface.
+AMEN Mixer is a realtime audio mixer system built with Wails, Go, Vue, WebSocket, mobile clients, and optional ESP32 hardware controls.
 
-The project combines a Wails desktop application, a Go backend, a Vue
-frontend, and an ESP32 firmware layer for external hardware control.
+The desktop application acts as the main host. Mobile devices connect to the desktop over the local network and stay synchronized through the Go realtime backend.
 
 ## Features
 
--   Real-time audio channel management
--   Modern dark themed mixer interface
--   Per-application volume control
--   WebSocket based realtime communication
--   Serial communication support for external controllers
--   ESP32 firmware integration
--   Rotary encoder hardware support
+Current implementation includes:
+
+* Wails desktop application
+* Vue 3 + TypeScript frontend
+* Go realtime backend
+* WebSocket communication
+* Desktop ↔ mobile synchronization
+* Realtime volume and mute updates
+* Initial mixer state synchronization
+* Connected device/client tracking
+* mDNS local discovery using `amen-mixer.local`
+* ESP32 serial integration layer
+* PlatformIO firmware project
+* Capacitor Android project
+
+## Architecture
+
+```text
+                     AMEN Mixer
+                         │
+                         ▼
+                ┌─────────────────┐
+                │   Go Backend    │
+                │                 │
+                │ WebSocket :8081 │
+                │ Audio Manager   │
+                │ Serial Manager  │
+                └────────┬────────┘
+                         │
+          ┌──────────────┼──────────────┐
+          │              │              │
+          ▼              ▼              ▼
+     Wails Desktop    Mobile UI       ESP32
+        Vue         Browser/Android   Hardware
+```
+
+The Go backend is the central source of mixer state.
+
+Clients do not communicate directly with each other.
 
 ## Project Structure
 
-``` text
+```text
 DEEJ/
+├── README.md
+├── docs/
+│   ├── architecture.md
+│   └── development.md
+│
 ├── desktop/
 │   ├── backend/
-│   │   ├── audio/       # Windows audio management
-│   │   ├── serial/      # Serial communication layer
-│   │   ├── protocol/    # Command definitions
-│   │   └── models/      # Shared data models
 │   ├── frontend/
-│   │   ├── src/
-│   │   │   ├── components/mixer/ # Mixer UI components
-│   │   │   ├── stores/            # Application state
-│   │   │   └── composables/       # Realtime hooks
-│   │   └── package.json
-│   ├── main.go
-│   └── wails.json
+│   ├── app.go
+│   ├── app_audio.go
+│   ├── app_serial.go
+│   ├── mdns.go
+│   ├── realtime.go
+│   ├── realtime_client.go
+│   ├── realtime_handler.go
+│   ├── realtime_broadcast.go
+│   ├── realtime_devices.go
+│   ├── realtime_server.go
+│   ├── state_sync.go
+│   └── README.md
 │
 └── firmware/
-    └── PlatformIO/
-        └── Projects/
-            └── esp32_test/
-                ├── lib/
-                │   ├── AudioManager/
-                │   ├── EncoderManager/
-                │   └── Config/
-                └── src/main.cpp
 ```
 
 ## Technology Stack
 
-### Desktop Application
+Desktop:
 
--   Go
--   Wails v2
--   Vue 3
--   Vite
--   Tailwind CSS
+* Go
+* Wails v2
+* Vue 3
+* TypeScript
+* Vite
 
-### Communication
+Realtime:
 
--   WebSocket
--   Serial communication
+* WebSocket
+* JSON messaging
+* mDNS / Bonjour
 
-### Hardware
+Mobile:
 
--   ESP32
--   Rotary encoder input
--   PlatformIO firmware environment
+* Browser client
+* Capacitor
+* Android Studio
 
-## Development Setup
+Hardware:
 
-### Requirements
+* ESP32
+* PlatformIO
+* Serial communication
 
-Install:
+## Development
 
--   Go 1.25+
--   Node.js and npm
--   Wails CLI
--   PlatformIO (for firmware)
+Enter the desktop project:
 
-## Running Desktop Development
-
-Navigate to:
-
-``` bash
+```bash
 cd desktop
+```
+
+Install/update Go dependencies:
+
+```bash
+go mod tidy
 ```
 
 Install frontend dependencies:
 
-``` bash
+```bash
 cd frontend
 npm install
+cd ..
 ```
 
 Run development mode:
 
-``` bash
-cd ..
+```bash
 wails dev
 ```
 
-## Building Production Application
+## Mobile Access
 
-From the desktop directory:
+Preferred local URL:
 
-``` bash
-wails build
+```text
+http://amen-mixer.local:5173
 ```
 
-The generated application will be placed in the Wails build output
-directory.
+If mDNS is unavailable, get the host IP:
 
-## Environment Configuration
+```bash
+ipconfig getifaddr en0
+```
 
-Frontend environment variables are stored locally.
+Then open:
+
+```text
+http://<HOST-IP>:5173
+```
 
 Example:
 
-``` env
-VITE_WS_URL=ws://localhost:8765/ws
+```text
+http://192.168.18.11:5173
 ```
 
-Create your own `.env` file based on your environment.
+## Realtime Server
 
-## Architecture Overview
+Health endpoint:
 
-The system is divided into three main layers:
+```text
+http://amen-mixer.local:8081/
+```
 
-### Frontend Layer
+Expected response:
 
-Responsible for:
+```text
+AMEN MIXER REALTIME SERVER OK
+```
 
--   Mixer visualization
--   User interaction
--   Channel controls
--   Realtime state updates
+WebSocket endpoint:
 
-### Backend Layer
+```text
+ws://amen-mixer.local:8081/ws
+```
 
-Responsible for:
+The Wails desktop application connects locally using:
 
--   Audio session management
--   Windows audio control
--   Serial communication
--   WebSocket events
+```text
+ws://127.0.0.1:8081/ws
+```
 
-### Firmware Layer
+## Realtime Flow
 
-Responsible for:
+Mobile update:
 
--   Reading physical controls
--   Sending encoder commands
--   Communicating with desktop application
+```text
+Mobile Slider
+    ↓
+CHANNEL_UPDATE
+    ↓
+Go Realtime Server
+    ↓
+Audio Manager
+    ↓
+BroadcastChannelUpdate
+    ↓
+Desktop + Mobile Clients
+```
 
-## Future Development
+Desktop update:
 
-Potential improvements:
+```text
+Wails UI
+    ↓
+Audio Manager
+    ↓
+BroadcastChannelUpdate
+    ↓
+Mobile Clients
+```
 
--   Hardware enclosure design
--   More audio device support
--   User profiles
--   Persistent mixer presets
--   Cross-platform audio backend
--   Plugin system
+## Android
 
-## License
+The Android project is located at:
 
-Add project license information here.
+```text
+desktop/frontend/android
+```
+
+Build the frontend:
+
+```bash
+cd desktop/frontend
+npm run build
+```
+
+Sync Capacitor:
+
+```bash
+npx cap sync android
+```
+
+Open Android Studio:
+
+```bash
+npx cap open android
+```
+
+## ESP32
+
+Firmware is maintained separately under:
+
+```text
+firmware/
+```
+
+PlatformIO handles ESP32 compilation and upload.
+
+The ESP32 firmware is not bundled into the desktop or Android application.
+
+## Current Limitation
+
+The realtime state architecture is implemented, but actual Windows per-application audio control still needs the Windows Core Audio implementation inside:
+
+```text
+desktop/backend/audio/windows.go
+```
+
+Target architecture:
+
+```text
+Audio Manager
+    ↓
+Windows Audio Layer
+    ↓
+Windows Core Audio
+    ↓
+Application Audio Session
+```
+
+## Documentation
+
+Detailed documentation:
+
+* [Architecture](docs/architecture.md)
+* [Development Guide](docs/development.md)
+* [Desktop README](desktop/README.md)
+
+## Git
+
+Example feature branch:
+
+```bash
+git checkout -b feature/android-app
+```
+
+First push:
+
+```bash
+git push -u origin feature/android-app
+```
+
+Next pushes:
+
+```bash
+git push
+```
+
+## Roadmap
+
+* Windows Core Audio integration
+* Full desktop ↔ mobile mixer synchronization
+* ESP32 mixer control
+* Production mobile frontend serving
+* Android packaging
+* Presets and persistence
+* Automatic audio session discovery
