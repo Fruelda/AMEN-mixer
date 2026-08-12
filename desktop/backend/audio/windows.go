@@ -5,51 +5,49 @@ import (
 	"strings"
 )
 
-type WindowsAudio struct {
-}
+type WindowsAudio struct{}
 
 func NewWindowsAudio() *WindowsAudio {
-
 	return &WindowsAudio{}
-
 }
 
-// =====================================================
-// REFRESH AUDIO SESSION
-// =====================================================
+// ============================================================
+// REFRESH
+// ============================================================
 
 func (w *WindowsAudio) Refresh() error {
-
 	fmt.Println(
 		"[WINDOWS AUDIO] Refresh sessions",
 	)
 
-	/*
-		Nanti:
-
-		Core Audio API:
-		- enumerate sessions
-		- detect apps
-		- update channel list
-
-	*/
+	// TODO:
+	// Windows Core Audio API:
+	//
+	// - enumerate sessions
+	// - detect apps
+	// - map ke mixer channels
 
 	return nil
-
 }
 
-// =====================================================
-// SET APPLICATION VOLUME
-// =====================================================
+// ============================================================
+// SET VOLUME
+// ============================================================
 
 func (w *WindowsAudio) SetVolume(
 	app string,
 	volume int,
 ) error {
-
 	app =
 		strings.ToLower(
-			app,
+			strings.TrimSpace(
+				app,
+			),
+		)
+
+	volume =
+		normalizeVolume(
+			volume,
 		)
 
 	fmt.Printf(
@@ -58,24 +56,42 @@ func (w *WindowsAudio) SetVolume(
 		volume,
 	)
 
-	/*
-		Nanti:
-
-		1. Cari audio session:
-		   app.exe
-
-
-		2. Ambil:
-		   ISimpleAudioVolume
-
-
-		3. Set:
-
-		   volume / 100.0
-
-
-	*/
+	// TODO Windows:
+	//
+	// Cari audio session berdasarkan process.
+	//
+	// ISimpleAudioVolume
+	// SetMasterVolume(
+	//     float32(volume) / 100,
+	// )
 
 	return nil
+}
 
+// ============================================================
+// SET MUTE
+// ============================================================
+
+func (w *WindowsAudio) SetMuted(
+	app string,
+	muted bool,
+) error {
+	app =
+		strings.ToLower(
+			strings.TrimSpace(
+				app,
+			),
+		)
+
+	fmt.Printf(
+		"[WINDOWS AUDIO] %s muted => %t\n",
+		app,
+		muted,
+	)
+
+	// TODO Windows:
+	//
+	// ISimpleAudioVolume.SetMute(...)
+
+	return nil
 }

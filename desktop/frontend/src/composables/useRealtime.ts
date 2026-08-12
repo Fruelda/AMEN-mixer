@@ -1,20 +1,38 @@
-import { ref } from "vue"
-
-const connected = ref(false)
-
-let socket: WebSocket | null = null
-
-const listeners = new Set<
-    (data: any) => void
->()
+import {
+    ref
+} from "vue"
 
 
 // =====================================================
-// CONFIG
+// STATE
 // =====================================================
 
-const WS_URL =
-    "ws://192.168.1.44:8081/ws"
+const connected =
+    ref(
+        false
+    )
+
+
+let socket:
+    WebSocket |
+    null =
+    null
+
+
+let reconnectTimer:
+    ReturnType<
+        typeof setTimeout
+    > |
+    null =
+    null
+
+
+const listeners =
+    new Set<
+        (
+            data: any
+        ) => void
+    >()
 
 
 // =====================================================
@@ -24,25 +42,98 @@ const WS_URL =
 function isWailsEnvironment() {
 
     if (
-        typeof window === "undefined"
+        typeof window ===
+        "undefined"
     ) {
+
         return false
+
     }
 
+
+    // Wails runtime tersedia
+    // sebagai window.runtime.
     return (
-        "__WAILS_RUNTIME__" in window
+        "runtime" in window
     )
+
 }
 
 
 // =====================================================
-// CLIENT INFO, baca device yang konek
+// REALTIME URL
+// =====================================================
+
+function getRealtimeURL() {
+
+    // =================================================
+    // WAILS DESKTOP
+    // =================================================
+    //
+    // Backend Go berada di komputer
+    // yang sama.
+    //
+    // Tidak perlu menggunakan LAN IP.
+    //
+    // =================================================
+
+    if (
+        isWailsEnvironment()
+    ) {
+
+        return (
+            "ws://127.0.0.1:8081/ws"
+        )
+
+    }
+
+
+    // =================================================
+    // IPHONE / ANDROID / BROWSER
+    // =================================================
+    //
+    // Misalnya halaman dibuka:
+    //
+    // http://amen-mixer.local:5173
+    //
+    // hostname:
+    //
+    // amen-mixer.local
+    //
+    // WebSocket otomatis:
+    //
+    // ws://amen-mixer.local:8081/ws
+    //
+    //
+    // Kalau fallback pakai IP:
+    //
+    // http://192.168.18.11:5173
+    //
+    // WebSocket otomatis:
+    //
+    // ws://192.168.18.11:8081/ws
+    //
+    // =================================================
+
+    const host =
+        window.location.hostname
+
+
+    return (
+        `ws://${host}:8081/ws`
+    )
+
+}
+
+
+// =====================================================
+// CLIENT INFO
 // =====================================================
 
 function getClientInfo() {
 
     // =================================================
-    // WAILS DESKTOP
+    // WAILS
     // =================================================
 
     if (
@@ -58,7 +149,7 @@ function getClientInfo() {
                 "Wails Desktop",
 
             clientType:
-                "desktop"
+                "desktop",
 
         }
 
@@ -66,14 +157,17 @@ function getClientInfo() {
 
 
     // =================================================
-    // BROWSER DEVICE
+    // BROWSER
     // =================================================
 
     const userAgent =
-        navigator.userAgent.toLowerCase()
+        navigator.userAgent
+            .toLowerCase()
 
 
-    // iPhone
+    // =================================================
+    // IPHONE
+    // =================================================
 
     if (
         /iphone|ipod/.test(
@@ -90,22 +184,27 @@ function getClientInfo() {
                 "iPhone",
 
             clientType:
-                "mobile"
+                "mobile",
 
         }
 
     }
 
 
-    // iPad
+    // =================================================
+    // IPAD
+    // =================================================
 
     if (
         /ipad/.test(
             userAgent
         ) ||
         (
-            navigator.platform === "MacIntel" &&
-            navigator.maxTouchPoints > 1
+            navigator.platform ===
+            "MacIntel" &&
+
+            navigator.maxTouchPoints >
+            1
         )
     ) {
 
@@ -118,14 +217,16 @@ function getClientInfo() {
                 "iPad",
 
             clientType:
-                "tablet"
+                "tablet",
 
         }
 
     }
 
 
-    // Android
+    // =================================================
+    // ANDROID
+    // =================================================
 
     if (
         /android/.test(
@@ -137,6 +238,7 @@ function getClientInfo() {
             !/mobile/.test(
                 userAgent
             )
+
 
         if (
             isTablet
@@ -151,11 +253,12 @@ function getClientInfo() {
                     "Android Tablet",
 
                 clientType:
-                    "tablet"
+                    "tablet",
 
             }
 
         }
+
 
         return {
 
@@ -166,7 +269,7 @@ function getClientInfo() {
                 "Android Phone",
 
             clientType:
-                "mobile"
+                "mobile",
 
         }
 
@@ -186,9 +289,51 @@ function getClientInfo() {
             "AMEN Browser",
 
         clientType:
-            "browser"
+            "browser",
 
     }
+
+}
+
+
+// =====================================================
+// RANDOM ID
+// =====================================================
+
+function createRandomID(
+    prefix: string
+) {
+
+    try {
+
+        if (
+            typeof crypto !==
+            "undefined" &&
+
+            typeof crypto.randomUUID ===
+            "function"
+        ) {
+
+            return (
+                `${prefix}-${crypto.randomUUID()}`
+            )
+
+        }
+
+    }
+    catch {
+
+        // fallback below
+
+    }
+
+
+    return (
+        `${prefix}-${Date.now()}-${Math.random()
+            .toString(16)
+            .slice(2)}`
+    )
+
 }
 
 
@@ -222,7 +367,9 @@ function getClientID(
 
 
         const id =
-            `${prefix}-${crypto.randomUUID()}`
+            createRandomID(
+                prefix
+            )
 
 
         localStorage.setItem(
@@ -236,15 +383,14 @@ function getClientID(
     }
     catch {
 
-
-        // fallback jika localStorage
-        // tidak tersedia
-
         return (
-            `${prefix}-${Date.now()}`
+            createRandomID(
+                prefix
+            )
         )
 
     }
+
 }
 
 
@@ -276,7 +422,7 @@ function registerClient() {
             info.name,
 
         clientType:
-            info.clientType
+            info.clientType,
 
     })
 
@@ -286,6 +432,72 @@ function registerClient() {
         info.name,
         id
     )
+
+}
+
+
+// =====================================================
+// CLEAR RECONNECT
+// =====================================================
+
+function clearReconnectTimer() {
+
+    if (
+        reconnectTimer ===
+        null
+    ) {
+
+        return
+
+    }
+
+
+    clearTimeout(
+        reconnectTimer
+    )
+
+
+    reconnectTimer =
+        null
+
+}
+
+
+// =====================================================
+// RECONNECT
+// =====================================================
+
+function scheduleReconnect() {
+
+    if (
+        reconnectTimer !==
+        null
+    ) {
+
+        return
+
+    }
+
+
+    console.log(
+        "[WS] Reconnect in 3 seconds..."
+    )
+
+
+    reconnectTimer =
+        setTimeout(
+            () => {
+
+                reconnectTimer =
+                    null
+
+
+                connectRealtime()
+
+            },
+            3000
+        )
+
 }
 
 
@@ -295,81 +507,151 @@ function registerClient() {
 
 export function connectRealtime() {
 
+    // =================================================
+    // ALREADY CONNECTED
+    // =================================================
+
     if (
         socket &&
         (
-            socket.readyState === WebSocket.OPEN ||
-            socket.readyState === WebSocket.CONNECTING
+            socket.readyState ===
+            WebSocket.OPEN ||
+
+            socket.readyState ===
+            WebSocket.CONNECTING
         )
     ) {
-
-        console.log(
-            "[WS] Already connecting/connected"
-        )
 
         return
 
     }
 
 
-    socket =
+    clearReconnectTimer()
+
+
+    // =================================================
+    // URL
+    // =================================================
+
+    const url =
+        getRealtimeURL()
+
+
+    console.log(
+        "[WS] Connecting:",
+        url
+    )
+
+
+    // =================================================
+    // CREATE SOCKET
+    // =================================================
+
+    const ws =
         new WebSocket(
-            WS_URL
+            url
         )
+
+
+    socket =
+        ws
 
 
     // =================================================
     // OPEN
     // =================================================
 
-    socket.onopen = () => {
+    ws.onopen =
+        () => {
 
-        connected.value =
-            true
+            if (
+                socket !==
+                ws
+            ) {
+
+                return
+
+            }
 
 
-        console.log(
-            "[WS] Connected"
-        )
+            connected.value =
+                true
 
 
-        registerClient()
+            console.log(
+                "[WS] Connected:",
+                url
+            )
 
-    }
+
+            registerClient()
+
+        }
 
 
     // =================================================
     // RECEIVE
     // =================================================
 
-    socket.onmessage = event => {
+    ws.onmessage =
+        event => {
 
-        try {
+            try {
 
-            const data =
-                JSON.parse(
-                    event.data
+                const data =
+                    JSON.parse(
+                        event.data
+                    )
+
+
+                console.log(
+                    "[WS RECEIVE]",
+                    data
                 )
 
 
-            console.log(
-                "[WS RECEIVE]",
-                data
-            )
+                listeners.forEach(
+                    callback => {
 
+                        try {
 
-            listeners.forEach(
-                callback => {
+                            callback(
+                                data
+                            )
 
-                    callback(
-                        data
-                    )
+                        }
+                        catch (error) {
 
-                }
-            )
+                            console.error(
+                                "[WS LISTENER ERROR]",
+                                error
+                            )
+
+                        }
+
+                    }
+                )
+
+            }
+            catch (error) {
+
+                console.error(
+                    "[WS PARSE ERROR]",
+                    error
+                )
+
+            }
 
         }
-        catch (error) {
+
+
+    // =================================================
+    // ERROR
+    // =================================================
+
+    ws.onerror =
+        error => {
 
             console.error(
                 "[WS ERROR]",
@@ -378,52 +660,42 @@ export function connectRealtime() {
 
         }
 
-    }
-
-
-    // =================================================
-    // ERROR
-    // =================================================
-
-    socket.onerror = error => {
-
-        console.error(
-            "[WS ERROR]",
-            error
-        )
-
-    }
-
 
     // =================================================
     // CLOSE
     // =================================================
 
-    socket.onclose = () => {
+    ws.onclose =
+        event => {
 
-        connected.value =
-            false
+            if (
+                socket !==
+                ws
+            ) {
 
+                return
 
-        console.log(
-            "[WS] Disconnected"
-        )
-
-
-        socket =
-            null
+            }
 
 
-        setTimeout(
-            () => {
+            connected.value =
+                false
 
-                connectRealtime()
 
-            },
-            3000
-        )
+            socket =
+                null
 
-    }
+
+            console.log(
+                "[WS] Disconnected:",
+                event.code,
+                event.reason
+            )
+
+
+            scheduleReconnect()
+
+        }
 
 }
 
@@ -438,23 +710,43 @@ export function sendRealtime(
 
     if (
         !socket ||
-        socket.readyState !== WebSocket.OPEN
+        socket.readyState !==
+        WebSocket.OPEN
     ) {
 
         console.warn(
-            "[WS] not connected"
+            "[WS] Not connected",
+            data
         )
 
-        return
+        return false
 
     }
 
 
-    socket.send(
-        JSON.stringify(
-            data
+    try {
+
+        socket.send(
+            JSON.stringify(
+                data
+            )
         )
-    )
+
+
+        return true
+
+    }
+    catch (error) {
+
+        console.error(
+            "[WS SEND ERROR]",
+            error
+        )
+
+
+        return false
+
+    }
 
 }
 
@@ -464,7 +756,10 @@ export function sendRealtime(
 // =====================================================
 
 export function onRealtimeMessage(
-    callback: (data: any) => void
+    callback:
+        (
+            data: any
+        ) => void
 ) {
 
     listeners.add(
@@ -500,7 +795,7 @@ export function useRealtime() {
             sendRealtime,
 
         subscribe:
-            onRealtimeMessage
+            onRealtimeMessage,
 
     }
 

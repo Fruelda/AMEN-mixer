@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">AMEN Mixer</string>
+    <string name="title_activity_main">AMEN Mixer</string>
+    <string name="package_name">com.amen.mixer</string>
+    <string name="custom_url_scheme">com.amen.mixer</string>
+</resources>

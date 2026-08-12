@@ -11,6 +11,10 @@ import tailwindcss from
 
 export default defineConfig({
 
+  // ===================================================
+  // PLUGINS
+  // ===================================================
+
   plugins: [
 
     vue(),
@@ -20,11 +24,33 @@ export default defineConfig({
   ],
 
 
+  // ===================================================
+  // DEV SERVER
+  // ===================================================
+
   server: {
 
-    host: "0.0.0.0",
+    // Bisa diakses device lain
+    // dalam LAN.
+    host:
+      "0.0.0.0",
 
-    port: 5173,
+    // Port tetap supaya URL HP
+    // tidak berubah.
+    port:
+      5173,
+
+    // Jangan pindah ke 5174 kalau
+    // port 5173 sedang terpakai.
+    strictPort:
+      true,
+
+    // Izinkan hostname mDNS.
+    allowedHosts: [
+
+      "amen-mixer.local",
+
+    ],
 
   },
 
