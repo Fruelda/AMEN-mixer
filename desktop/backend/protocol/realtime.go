@@ -20,6 +20,9 @@ const (
 	MessageCommand MessageType = "COMMAND"
 
 	MessageDeviceStatus MessageType = "DEVICE_STATUS"
+
+	// Connected devices list
+	MessageDevices MessageType = "DEVICES"
 )
 
 type RealtimeMessage struct {
@@ -32,11 +35,15 @@ type RealtimeMessage struct {
 	Command *MixerCommand `json:"command,omitempty"`
 
 	Connected *bool `json:"connected,omitempty"`
+
+	// Connected devices
+	Devices []DeviceInfo `json:"devices,omitempty"`
 }
 
-/*================================
-// ESP32 DEVICE REGISTER
-================================
+/*
+|--------------------------------------------------------------------------
+| DEVICE REGISTER
+|--------------------------------------------------------------------------
 */
 
 type DeviceRegister struct {
@@ -45,6 +52,26 @@ type DeviceRegister struct {
 	ID string `json:"id"`
 
 	Name string `json:"name"`
+}
+
+/*
+|--------------------------------------------------------------------------
+| DEVICE INFO
+|--------------------------------------------------------------------------
+|
+| Data device/client yang sedang terhubung.
+|
+|--------------------------------------------------------------------------
+*/
+
+type DeviceInfo struct {
+	ID string `json:"id"`
+
+	Name string `json:"name"`
+
+	ClientType string `json:"clientType"`
+
+	Connected bool `json:"connected"`
 }
 
 /*

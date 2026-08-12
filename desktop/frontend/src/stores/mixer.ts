@@ -5,18 +5,16 @@ import {
   SetVolume
 } from "../../wailsjs/go/main/App"
 
-
 import type {
   MixerChannel,
   MixerCommand,
-  RealtimeMessage
+  RealtimeMessage,
+  ConnectedDevice
 } from "../types/mixer"
-
 
 import {
   sendRealtime
 } from "../composables/useRealtime"
-
 
 
 // ============================================================
@@ -78,7 +76,6 @@ const mockChannels: MixerChannel[] = [
 ]
 
 
-
 // ============================================================
 // ENV
 // ============================================================
@@ -91,13 +88,11 @@ function isWailsEnvironment() {
     return false
   }
 
-
   return (
     "__WAILS_RUNTIME__" in window
   )
 
 }
-
 
 
 // ============================================================
@@ -114,7 +109,6 @@ function normalizeVolume(
     return 0
   }
 
-
   return Math.round(
     Math.max(
       0,
@@ -128,35 +122,36 @@ function normalizeVolume(
 }
 
 
-
 // ============================================================
 // STORE
 // ============================================================
 
 export const mixerStore = reactive({
 
+  // ========================================================
+  // DATA
+  // ========================================================
 
   channels:
     [] as MixerChannel[],
 
+  devices:
+    [] as ConnectedDevice[],
+
+  loading:
+    false,
+
+  deviceConnected:
+    false,
 
 
-  loading: false,
-
-
-  deviceConnected: false,
-
-
-
-  // ============================================================
-  // STATE
-  // ============================================================
-
+  // ========================================================
+  // CHANNEL STATE
+  // ========================================================
 
   setChannels(
     channels: MixerChannel[]
   ) {
-
 
     this.channels =
       channels.map(
@@ -172,53 +167,63 @@ export const mixerStore = reactive({
         })
       )
 
-
   },
 
 
+  // ========================================================
+  // DEVICE STATE
+  // ========================================================
+
+  setDevices(
+    devices: ConnectedDevice[]
+  ) {
+
+    this.devices =
+      devices
+
+  },
 
 
   setLoading(
     value: boolean
   ) {
 
-    this.loading = value
+    this.loading =
+      value
 
   },
-
-
 
 
   setConnected(
     value: boolean
   ) {
 
-    this.deviceConnected = value
+    this.deviceConnected =
+      value
 
   },
 
 
-
-
-  // ============================================================
-  // LOAD
-  // ============================================================
-
+  // ========================================================
+  // LOAD CHANNEL
+  // ========================================================
 
   async loadChannels() {
 
-
-    this.setLoading(true)
-
+    this.setLoading(
+      true
+    )
 
 
     try {
 
+      // =================================================
+      // BROWSER MODE
+      // =================================================
 
       if (
         !isWailsEnvironment()
       ) {
-
 
         this.setChannels(
           structuredClone(
@@ -226,46 +231,39 @@ export const mixerStore = reactive({
           )
         )
 
-
         return
 
       }
 
 
-
+      // =================================================
+      // WAILS MODE
+      // =================================================
 
       const result =
         await GetChannels()
 
 
-
       if (
-        Array.isArray(result)
-        &&
+        Array.isArray(result) &&
         result.length > 0
       ) {
-
 
         this.setChannels(
           result
         )
 
-
         return
 
       }
-
 
 
       this.setChannels(
         mockChannels
       )
 
-
-
     }
     catch (error) {
-
 
       console.warn(
         "[MIXER] Load failed",
@@ -277,28 +275,21 @@ export const mixerStore = reactive({
         mockChannels
       )
 
-
     }
     finally {
 
-
-      this.setLoading(false)
-
+      this.setLoading(
+        false
+      )
 
     }
-
-
 
   },
 
 
-
-
-
-  // ============================================================
+  // ========================================================
   // USER CHANGE
-  // ============================================================
-
+  // ========================================================
 
   async setVolume(
     id: number,
@@ -306,17 +297,18 @@ export const mixerStore = reactive({
     broadcast = true
   ) {
 
-
     const channel =
       this.channels.find(
-        item => item.id === id
+        item =>
+          item.id === id
       )
 
 
-
-    if (!channel)
+    if (
+      !channel
+    ) {
       return
-
+    }
 
 
     const value =
@@ -325,25 +317,34 @@ export const mixerStore = reactive({
       )
 
 
+    // =====================================================
+    // IGNORE SAME VALUE
+    // =====================================================
+
+    if (
+      channel.volume === value
+    ) {
+      return
+    }
 
 
-    // update UI
+    // =====================================================
+    // UPDATE LOCAL UI
+    // =====================================================
 
-    channel.volume = value
+    channel.volume =
+      value
 
 
-
-
-
+    // =====================================================
     // WAILS AUDIO
+    // =====================================================
 
     if (
       isWailsEnvironment()
     ) {
 
-
       try {
-
 
         await SetVolume(
           id,
@@ -355,293 +356,284 @@ export const mixerStore = reactive({
           `[WAILS] ${channel.name}: ${value}%`
         )
 
-
       }
       catch (error) {
-
 
         console.warn(
           "[WAILS] SetVolume failed",
           error
         )
 
-
       }
 
 
+      /*
+      IMPORTANT
+
+      Jangan broadcast lagi dari frontend Wails.
+
+      SetVolume()
+          ↓
+      Go Audio Manager
+          ↓
+      Audio Event Bridge
+          ↓
+      BroadcastChannelUpdate()
+
+      Broadcast sudah dilakukan backend.
+      */
+
+      return
+
     }
-    else {
 
 
-      console.log(
-        `[BROWSER] ${channel.name}: ${value}%`
-      )
+    // =====================================================
+    // BROWSER / MOBILE
+    // =====================================================
 
+    console.log(
+      `[BROWSER] ${channel.name}: ${value}%`
+    )
 
-    }
-
-
-
-
-    // broadcast hanya dari user input
 
     if (
       broadcast
     ) {
 
-
       this.broadcastChannel(
         id
       )
 
-
     }
-
-
 
   },
 
 
-
-
-
-  // ============================================================
+  // ========================================================
   // NETWORK SEND
-  // ============================================================
-
+  // ========================================================
 
   broadcastChannel(
     id: number
   ) {
 
-
     const channel =
       this.channels.find(
-        item => item.id === id
+        item =>
+          item.id === id
       )
 
 
-
-    if (!channel)
+    if (
+      !channel
+    ) {
       return
-
-
+    }
 
 
     sendRealtime({
 
-      type: "CHANNEL_UPDATE",
-
+      type:
+        "CHANNEL_UPDATE",
 
       channel: {
-
 
         id:
           channel.id,
 
-
         volume:
           channel.volume,
-
 
         muted:
           channel.muted
 
       }
 
-
     })
-
-
 
   },
 
 
-
-
-
-  // ============================================================
-  // RECEIVE NETWORK
-  // ============================================================
-
+  // ========================================================
+  // RECEIVE CHANNEL UPDATE
+  // ========================================================
 
   applyRemoteUpdate(
     message: RealtimeMessage
   ) {
 
-
-
     if (
-      message.type !== "CHANNEL_UPDATE"
-    )
+      message.type !==
+      "CHANNEL_UPDATE"
+    ) {
       return
-
+    }
 
 
     if (
       !message.channel
-    )
+    ) {
       return
-
-
+    }
 
 
     const channel =
       this.channels.find(
         item =>
-          item.id === message.channel?.id
+          item.id ===
+          message.channel?.id
       )
 
 
-
-    if (!channel)
+    if (
+      !channel
+    ) {
       return
+    }
 
 
+    /*
+    IMPORTANT
 
+    Jangan panggil:
+    setVolume()
+    broadcastChannel()
 
-
-    // IMPORTANT
-    // jangan panggil setVolume()
-    // karena akan broadcast ulang
-
+    Remote update hanya update local state.
+    */
 
 
     if (
-      typeof message.channel.volume === "number"
+      typeof message.channel.volume ===
+      "number"
     ) {
-
 
       channel.volume =
         normalizeVolume(
           message.channel.volume
         )
 
-
-
     }
 
 
-
-
     if (
-      typeof message.channel.muted === "boolean"
+      typeof message.channel.muted ===
+      "boolean"
     ) {
-
 
       channel.muted =
         message.channel.muted
 
-
     }
-
-
-
 
   },
 
 
-
-
-
-  // ============================================================
+  // ========================================================
   // ESP32 COMMAND
-  // ============================================================
-
+  // ========================================================
 
   handleCommand(
     command: MixerCommand
   ) {
 
+    /*
+    COMMAND dari ESP32 hanya diproses oleh Wails.
+
+    Browser / HP / iPad cukup menerima
+    CHANNEL_UPDATE hasil akhirnya.
+
+    Ini mencegah beberapa client
+    mengirim update yang sama.
+    */
+
+    if (
+      !isWailsEnvironment()
+    ) {
+      return
+    }
+
 
     const channel =
       this.channels.find(
         item =>
-          item.id === command.channel
+          item.id ===
+          command.channel
       )
 
 
-
-    if (!channel)
+    if (
+      !channel
+    ) {
       return
+    }
 
 
-
-
-
+    // =====================================================
     // ENCODER
+    // =====================================================
 
     if (
       command.type === "ENC"
     ) {
 
-
-      channel.volume =
+      const newVolume =
         normalizeVolume(
           channel.volume +
           command.value
         )
 
 
-
-      // kirim hasil ESP32 ke client lain
-
-      this.broadcastChannel(
-        channel.id
+      void this.setVolume(
+        channel.id,
+        newVolume,
+        false
       )
 
 
+      return
 
     }
 
 
-
-
-
+    // =====================================================
     // BUTTON
+    // =====================================================
 
     if (
-      command.type === "BTN"
-      &&
+      command.type === "BTN" &&
       command.value === 1
     ) {
-
 
       channel.muted =
         !channel.muted
 
 
-
       this.broadcastChannel(
         channel.id
       )
 
-
     }
-
-
 
   },
 
 
-
-
+  // ========================================================
+  // ESP32 DIRECT VOLUME
+  // ========================================================
 
   setVolumeFromESP32(
     id: number,
     volume: number
   ) {
 
-
-    this.setVolume(
+    void this.setVolume(
       id,
       volume,
       false
     )
 
-
   }
-
-
 
 })

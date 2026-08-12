@@ -1,16 +1,292 @@
 import { ref } from "vue"
 
-
 const connected = ref(false)
 
-
 let socket: WebSocket | null = null
-
 
 const listeners = new Set<
     (data: any) => void
 >()
 
+
+// =====================================================
+// CONFIG
+// =====================================================
+
+const WS_URL =
+    "ws://192.168.1.44:8081/ws"
+
+
+// =====================================================
+// ENVIRONMENT
+// =====================================================
+
+function isWailsEnvironment() {
+
+    if (
+        typeof window === "undefined"
+    ) {
+        return false
+    }
+
+    return (
+        "__WAILS_RUNTIME__" in window
+    )
+}
+
+
+// =====================================================
+// CLIENT INFO, baca device yang konek
+// =====================================================
+
+function getClientInfo() {
+
+    // =================================================
+    // WAILS DESKTOP
+    // =================================================
+
+    if (
+        isWailsEnvironment()
+    ) {
+
+        return {
+
+            prefix:
+                "desktop",
+
+            name:
+                "Wails Desktop",
+
+            clientType:
+                "desktop"
+
+        }
+
+    }
+
+
+    // =================================================
+    // BROWSER DEVICE
+    // =================================================
+
+    const userAgent =
+        navigator.userAgent.toLowerCase()
+
+
+    // iPhone
+
+    if (
+        /iphone|ipod/.test(
+            userAgent
+        )
+    ) {
+
+        return {
+
+            prefix:
+                "iphone",
+
+            name:
+                "iPhone",
+
+            clientType:
+                "mobile"
+
+        }
+
+    }
+
+
+    // iPad
+
+    if (
+        /ipad/.test(
+            userAgent
+        ) ||
+        (
+            navigator.platform === "MacIntel" &&
+            navigator.maxTouchPoints > 1
+        )
+    ) {
+
+        return {
+
+            prefix:
+                "ipad",
+
+            name:
+                "iPad",
+
+            clientType:
+                "tablet"
+
+        }
+
+    }
+
+
+    // Android
+
+    if (
+        /android/.test(
+            userAgent
+        )
+    ) {
+
+        const isTablet =
+            !/mobile/.test(
+                userAgent
+            )
+
+        if (
+            isTablet
+        ) {
+
+            return {
+
+                prefix:
+                    "android-tablet",
+
+                name:
+                    "Android Tablet",
+
+                clientType:
+                    "tablet"
+
+            }
+
+        }
+
+        return {
+
+            prefix:
+                "android",
+
+            name:
+                "Android Phone",
+
+            clientType:
+                "mobile"
+
+        }
+
+    }
+
+
+    // =================================================
+    // GENERIC BROWSER
+    // =================================================
+
+    return {
+
+        prefix:
+            "browser",
+
+        name:
+            "AMEN Browser",
+
+        clientType:
+            "browser"
+
+    }
+}
+
+
+// =====================================================
+// PERSISTENT CLIENT ID
+// =====================================================
+
+function getClientID(
+    prefix: string
+) {
+
+    const storageKey =
+        "amen-mixer-client-id"
+
+
+    try {
+
+        const savedID =
+            localStorage.getItem(
+                storageKey
+            )
+
+
+        if (
+            savedID
+        ) {
+
+            return savedID
+
+        }
+
+
+        const id =
+            `${prefix}-${crypto.randomUUID()}`
+
+
+        localStorage.setItem(
+            storageKey,
+            id
+        )
+
+
+        return id
+
+    }
+    catch {
+
+
+        // fallback jika localStorage
+        // tidak tersedia
+
+        return (
+            `${prefix}-${Date.now()}`
+        )
+
+    }
+}
+
+
+// =====================================================
+// REGISTER CLIENT
+// =====================================================
+
+function registerClient() {
+
+    const info =
+        getClientInfo()
+
+
+    const id =
+        getClientID(
+            info.prefix
+        )
+
+
+    sendRealtime({
+
+        type:
+            "client.register",
+
+        id:
+            id,
+
+        name:
+            info.name,
+
+        clientType:
+            info.clientType
+
+    })
+
+
+    console.log(
+        "[WS] Registered:",
+        info.name,
+        id
+    )
+}
 
 
 // =====================================================
@@ -18,7 +294,6 @@ const listeners = new Set<
 // =====================================================
 
 export function connectRealtime() {
-
 
     if (
         socket &&
@@ -37,20 +312,20 @@ export function connectRealtime() {
     }
 
 
-
     socket =
         new WebSocket(
-            "ws://192.168.1.44:8081/ws"
+            WS_URL
         )
 
 
+    // =================================================
+    // OPEN
+    // =================================================
 
     socket.onopen = () => {
 
-
         connected.value =
             true
-
 
 
         console.log(
@@ -58,44 +333,23 @@ export function connectRealtime() {
         )
 
 
-
-        sendRealtime({
-
-            type:
-                "client.register",
-
-
-            id:
-                "browser-" + Date.now(),
-
-
-            name:
-                "AMEN Browser",
-
-
-            clientType:
-                "browser"
-
-        })
-
-
+        registerClient()
 
     }
 
 
-
+    // =================================================
+    // RECEIVE
+    // =================================================
 
     socket.onmessage = event => {
 
-
         try {
-
 
             const data =
                 JSON.parse(
                     event.data
                 )
-
 
 
             console.log(
@@ -104,56 +358,51 @@ export function connectRealtime() {
             )
 
 
-
             listeners.forEach(
                 callback => {
 
-                    callback(data)
+                    callback(
+                        data
+                    )
 
                 }
             )
 
-
-
         }
         catch (error) {
-
 
             console.error(
                 "[WS ERROR]",
                 error
             )
 
-
         }
-
 
     }
 
 
-
-
+    // =================================================
+    // ERROR
+    // =================================================
 
     socket.onerror = error => {
-
 
         console.error(
             "[WS ERROR]",
             error
         )
 
-
     }
 
 
-
+    // =================================================
+    // CLOSE
+    // =================================================
 
     socket.onclose = () => {
 
-
         connected.value =
             false
-
 
 
         console.log(
@@ -161,9 +410,8 @@ export function connectRealtime() {
         )
 
 
-
-        socket = null
-
+        socket =
+            null
 
 
         setTimeout(
@@ -175,13 +423,9 @@ export function connectRealtime() {
             3000
         )
 
-
     }
 
-
 }
-
-
 
 
 // =====================================================
@@ -192,32 +436,27 @@ export function sendRealtime(
     data: any
 ) {
 
-
     if (
         !socket ||
         socket.readyState !== WebSocket.OPEN
     ) {
 
-
         console.warn(
             "[WS] not connected"
         )
-
 
         return
 
     }
 
 
-
     socket.send(
-        JSON.stringify(data)
+        JSON.stringify(
+            data
+        )
     )
 
-
 }
-
-
 
 
 // =====================================================
@@ -228,27 +467,20 @@ export function onRealtimeMessage(
     callback: (data: any) => void
 ) {
 
-
     listeners.add(
         callback
     )
 
 
-
     return () => {
-
 
         listeners.delete(
             callback
         )
 
-
     }
 
-
 }
-
-
 
 
 // =====================================================
@@ -257,26 +489,19 @@ export function onRealtimeMessage(
 
 export function useRealtime() {
 
-
     return {
 
-
         connected,
-
 
         connect:
             connectRealtime,
 
-
         send:
             sendRealtime,
-
 
         subscribe:
             onRealtimeMessage
 
-
     }
-
 
 }

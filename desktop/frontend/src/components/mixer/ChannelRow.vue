@@ -1,35 +1,55 @@
 <script setup lang="ts">
+
+import AppIcon from "./AppIcon.vue"
 import VolumeMeter from "./VolumeMeter.vue"
+import MuteButton from "./MuteButton.vue"
 
-interface MixerChannel {
-  id: number
-  name: string
-  app: string
-  volume: number
-  muted: boolean
-  connected: boolean
-  selected: boolean
-}
+import type {
+  MixerChannel
+} from "../../types/mixer"
 
-const props = defineProps<{
-  channel: MixerChannel
-}>()
 
-const emit = defineEmits<{
-  (
-    event: "set-volume",
-    id: number,
-    volume: number
-  ): void
+// ============================================================
+// PROPS
+// ============================================================
 
-  (
-    event: "toggle-mute",
-    id: number
-  ): void
-}>()
+const props =
+  defineProps<{
+    channel: MixerChannel
+  }>()
+
+
+// ============================================================
+// EMIT
+// ============================================================
+
+const emit =
+  defineEmits<{
+
+    (
+      event: "set-volume",
+      id: number,
+      volume: number
+    ): void
+
+    (
+      event: "toggle-mute",
+      id: number
+    ): void
+
+  }>()
+
+
+// ============================================================
+// VOLUME COLOR
+// ============================================================
 
 function getVolumeColor() {
-  switch (props.channel.app) {
+
+  switch (
+  props.channel.app
+  ) {
+
     case "browser":
       return "cyan"
 
@@ -47,133 +67,159 @@ function getVolumeColor() {
 
     default:
       return "cyan"
+
   }
+
 }
+
 </script>
+
 
 <template>
 
   <div class="
       flex
+      w-full
       items-center
 
-      gap-1
-
+      gap-2
 
       border-b
       border-white/10
 
-
       px-2
-      py-[3px]
+      py-1.5
 
-
-      landscape:py-0
-
+      transition-colors
 
       last:border-b-0
 
-
       sm:gap-3
-      sm:px-3
+      sm:px-4
       sm:py-2
 
-
-      md:gap-6
-      md:px-8
-      md:py-5
-    ">
-
-
-    <!-- NAME -->
-
-
-    <div class="
-        w-16
-        shrink-0
-
-
-        landscape:w-14
-
-
-        sm:w-24
-
-
-        md:w-40
+      md:gap-5
+      md:px-6
+      md:py-3
+    " :class="channel.muted
+        ? 'bg-red-500/[0.05]'
+        : ''
       ">
 
+    <!-- ==================================================== -->
+    <!-- APP INFO -->
+    <!-- ==================================================== -->
+
+    <div class="
+        flex
+        w-[145px]
+        shrink-0
+        items-center
+
+        gap-2
+
+        sm:w-[190px]
+        sm:gap-3
+
+        md:w-[230px]
+      ">
+
+      <!-- ICON -->
 
       <div class="
-          truncate
+          flex
+          h-9
+          w-9
+          shrink-0
+          items-center
+          justify-center
 
+          sm:h-10
+          sm:w-10
 
-          text-xs
-
-          font-bold
-
-
-          text-white
-
-
-          landscape:text-[11px]
-
-
-          sm:text-base
-
-
-          md:text-2xl
+          md:h-11
+          md:w-11
         ">
 
-        {{ channel.name }}
+        <AppIcon :channel="channel" />
 
       </div>
 
 
+      <!-- NAME -->
 
       <div class="
-          text-[6px]
+          min-w-0
+          flex-1
+        ">
 
-          font-bold
+        <div class="
+            truncate
 
-          uppercase
+            text-sm
+            font-bold
 
-          tracking-[0.12em]
+            sm:text-base
+
+            md:text-xl
+          " :class="channel.muted
+              ? 'text-red-300'
+              : 'text-white'
+            ">
+
+          {{ channel.name }}
+
+        </div>
 
 
-          landscape:text-[5px]
+        <!-- STATUS -->
 
+        <div class="
+            text-[7px]
 
-          sm:text-[9px]
+            font-bold
+            uppercase
 
+            tracking-[0.12em]
 
-          md:text-xs
-        " :class="channel.connected
-            ? 'text-emerald-400'
-            : 'text-slate-500'
-          ">
+            sm:text-[8px]
 
-        {{
-          channel.connected
-            ? 'Connected'
-            : 'Offline'
-        }}
+            md:text-[9px]
+          " :class="!channel.connected
+              ? 'text-slate-500'
+              : channel.muted
+                ? 'text-red-400'
+                : 'text-emerald-400'
+            ">
+
+          {{
+            !channel.connected
+              ? "Offline"
+              : channel.muted
+                ? "Muted"
+                : "Connected"
+          }}
+
+        </div>
 
       </div>
-
 
     </div>
 
 
-
-
-
-    <!-- METER -->
-
+    <!-- ==================================================== -->
+    <!-- VOLUME METER -->
+    <!-- ==================================================== -->
 
     <div class="
         min-w-0
         flex-1
-      ">
+
+        transition-opacity
+      " :class="channel.muted
+          ? 'opacity-45'
+          : 'opacity-100'
+        ">
 
       <VolumeMeter :volume="channel.volume" :color="getVolumeColor()" @set-volume="
         volume =>
@@ -184,55 +230,50 @@ function getVolumeColor() {
           )
       " />
 
-
     </div>
 
 
-
-
-
+    <!-- ==================================================== -->
     <!-- VALUE -->
-
+    <!-- ==================================================== -->
 
     <div class="
-        w-9
-
+        w-10
         shrink-0
-
 
         text-right
 
-
         text-sm
-
         font-bold
-
 
         tabular-nums
 
-
-        text-white
-
-
-        landscape:text-xs
-
-
         sm:w-12
+        sm:text-base
 
-        sm:text-xl
-
-
-        md:w-24
-
-        md:text-3xl
-      ">
+        md:w-16
+        md:text-xl
+      " :class="channel.muted
+          ? 'text-red-300'
+          : 'text-white'
+        ">
 
       {{ Math.round(channel.volume) }}%
 
     </div>
 
 
-  </div>
+    <!-- ==================================================== -->
+    <!-- MUTE BUTTON -->
+    <!-- ==================================================== -->
 
+    <MuteButton :muted="channel.muted" @toggle="
+      emit(
+        'toggle-mute',
+        channel.id
+      )
+      " />
+
+  </div>
 
 </template>

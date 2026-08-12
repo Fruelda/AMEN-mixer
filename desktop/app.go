@@ -37,9 +37,7 @@ func (b *audioBridge) OnChannelUpdate(
 ) {
 
 	if b.server == nil {
-
 		return
-
 	}
 
 	b.server.BroadcastChannelUpdate(
@@ -47,7 +45,6 @@ func (b *audioBridge) OnChannelUpdate(
 		channel.Volume,
 		channel.Muted,
 	)
-
 }
 
 // =============================================================
@@ -57,10 +54,8 @@ func (b *audioBridge) OnChannelUpdate(
 func NewApp() *App {
 
 	return &App{
-
 		audio: audio.New(),
 	}
-
 }
 
 // =============================================================
@@ -93,6 +88,22 @@ func (a *App) startup(
 	a.realtime =
 		NewRealtimeServer()
 
+	// =========================================================
+	// INITIAL CHANNEL STATE
+	// =========================================================
+	//
+	// Seed pertama diambil dari Audio Manager.
+	//
+	// Setelah server berjalan,
+	// setiap CHANNEL_UPDATE akan memperbarui
+	// realtime state.
+	//
+	// =========================================================
+
+	a.realtime.SetInitialChannels(
+		a.audio.GetChannels(),
+	)
+
 	StartRealtimeServer(
 		a.realtime,
 	)
@@ -111,7 +122,6 @@ func (a *App) startup(
 
 	a.audio.SetListener(
 		&audioBridge{
-
 			server: a.realtime,
 		},
 	)
@@ -145,7 +155,6 @@ func (a *App) startup(
 		)
 
 		return
-
 	}
 
 	fmt.Println(
@@ -196,11 +205,8 @@ func (a *App) startup(
 
 				runtime.EventsEmit(
 					a.ctx,
-
 					"serial-command",
-
 					map[string]any{
-
 						"type": cmd.Type,
 
 						"channel": cmd.Channel,
@@ -208,22 +214,19 @@ func (a *App) startup(
 						"value": cmd.Value,
 					},
 				)
-
 			}
 
 			// =================================================
-			// WEBSOCKET COMMAND BROADCAST
+			// WEBSOCKET COMMAND
 			// =================================================
 
 			if a.realtime != nil {
 
 				a.realtime.BroadcastJSON(
 					protocol.RealtimeMessage{
-
 						Type: protocol.MessageCommand,
 
 						Command: &protocol.MixerCommand{
-
 							Type: cmd.Type,
 
 							Channel: cmd.Channel,
@@ -232,9 +235,7 @@ func (a *App) startup(
 						},
 					},
 				)
-
 			}
-
 		}
 
 	go manager.Start()
@@ -242,7 +243,6 @@ func (a *App) startup(
 	fmt.Println(
 		"[SERIAL] BACKGROUND SERIAL STARTED",
 	)
-
 }
 
 // =============================================================
@@ -257,7 +257,6 @@ func (a *App) Greet(
 		"Hello %s, It's show time!",
 		name,
 	)
-
 }
 
 // =============================================================
@@ -267,7 +266,6 @@ func (a *App) Greet(
 func (a *App) GetChannels() []models.Channel {
 
 	return a.audio.GetChannels()
-
 }
 
 // =============================================================
@@ -284,12 +282,10 @@ func (a *App) SetVolume(
 		return fmt.Errorf(
 			"audio manager not initialized",
 		)
-
 	}
 
 	return a.audio.SetVolume(
 		id,
 		volume,
 	)
-
 }

@@ -33,6 +33,8 @@ type WSClient struct {
 type RealtimeServer struct {
 	clients map[*WSClient]bool
 
+	channels map[int]protocol.Channel
+
 	mu sync.Mutex
 }
 
@@ -41,7 +43,6 @@ type RealtimeServer struct {
 // ============================================================
 
 var upgrader = websocket.Upgrader{
-
 	CheckOrigin: func(r *http.Request) bool {
 		return true
 	},
@@ -54,9 +55,73 @@ var upgrader = websocket.Upgrader{
 func NewRealtimeServer() *RealtimeServer {
 
 	return &RealtimeServer{
+		clients: make(
+			map[*WSClient]bool,
+		),
 
-		clients: make(map[*WSClient]bool),
+		channels: make(
+			map[int]protocol.Channel,
+		),
 	}
+}
+
+// ============================================================
+// PRETTY JSON LOG
+// ============================================================
+//
+// Hanya untuk tampilan terminal.
+// Tidak mengubah payload WebSocket.
+//
+// ============================================================
+
+func logRealtimeJSON(
+	label string,
+	data []byte,
+) {
+
+	var payload interface{}
+
+	err :=
+		json.Unmarshal(
+			data,
+			&payload,
+		)
+
+	// Jika bukan JSON valid,
+	// tampilkan seperti biasa.
+	if err != nil {
+
+		log.Println(
+			label,
+			string(data),
+		)
+
+		return
+	}
+
+	// Format JSON multiline.
+	pretty, err :=
+		json.MarshalIndent(
+			payload,
+			"",
+			"  ",
+		)
+
+	if err != nil {
+
+		log.Println(
+			label,
+			string(data),
+		)
+
+		return
+	}
+
+	log.Printf(
+		"%s\n%s\n",
+		label,
+		string(pretty),
+	)
 }
 
 // ============================================================
@@ -68,13 +133,16 @@ func (s *RealtimeServer) HandleWebSocket(
 	r *http.Request,
 ) {
 
-	log.Println("[WS] Incoming connection")
-
-	conn, err := upgrader.Upgrade(
-		w,
-		r,
-		nil,
+	log.Println(
+		"[WS] Incoming connection",
 	)
+
+	conn, err :=
+		upgrader.Upgrade(
+			w,
+			r,
+			nil,
+		)
 
 	if err != nil {
 
@@ -86,18 +154,22 @@ func (s *RealtimeServer) HandleWebSocket(
 		return
 	}
 
-	client := &WSClient{
+	client :=
+		&WSClient{
+			conn: conn,
+			Type: "unknown",
+		}
 
-		conn: conn,
-
-		Type: "unknown",
-	}
+	// ========================================================
+	// ADD CLIENT
+	// ========================================================
 
 	s.mu.Lock()
 
 	s.clients[client] = true
 
-	total := len(s.clients)
+	total :=
+		len(s.clients)
 
 	s.mu.Unlock()
 
@@ -106,17 +178,30 @@ func (s *RealtimeServer) HandleWebSocket(
 		total,
 	)
 
+	// ========================================================
+	// CLEANUP
+	// ========================================================
+
 	defer func() {
 
-		s.removeClient(client)
+		s.removeClient(
+			client,
+		)
 
-		conn.Close()
+		_ =
+			conn.Close()
 
 	}()
 
+	// ========================================================
+	// READ LOOP
+	// ========================================================
+
 	for {
 
-		messageType, data, err :=
+		messageType,
+			data,
+			err :=
 			conn.ReadMessage()
 
 		if err != nil {
@@ -129,21 +214,29 @@ func (s *RealtimeServer) HandleWebSocket(
 			break
 		}
 
-		if messageType != websocket.TextMessage {
+		if messageType !=
+			websocket.TextMessage {
 
 			continue
 		}
 
-		log.Println(
+		// ====================================================
+		// RECEIVED LOG
+		// ====================================================
+
+		logRealtimeJSON(
 			"[WS] Received:",
-			string(data),
+			data,
 		)
+
+		// ====================================================
+		// ROUTE MESSAGE
+		// ====================================================
 
 		s.handleMessage(
 			client,
 			data,
 		)
-
 	}
 }
 
@@ -160,10 +253,11 @@ func (s *RealtimeServer) handleMessage(
 		Type string `json:"type"`
 	}
 
-	err := json.Unmarshal(
-		data,
-		&header,
-	)
+	err :=
+		json.Unmarshal(
+			data,
+			&header,
+		)
 
 	if err != nil {
 
@@ -177,6 +271,10 @@ func (s *RealtimeServer) handleMessage(
 
 	switch header.Type {
 
+	// ========================================================
+	// DEVICE REGISTER
+	// ========================================================
+
 	case "device.register":
 
 		var device protocol.DeviceRegister
@@ -188,38 +286,86 @@ func (s *RealtimeServer) handleMessage(
 			)
 
 		if err != nil {
+
+			log.Println(
+				"[DEVICE] Invalid register:",
+				err,
+			)
+
 			return
 		}
 
-		client.ID = device.ID
-		client.Name = device.Name
-		client.Type = "hardware"
+		client.ID =
+			device.ID
+
+		client.Name =
+			device.Name
+
+		client.Type =
+			"hardware"
 
 		log.Printf(
 			"[DEVICE] %s connected\n",
 			device.ID,
 		)
 
-		reply := map[string]string{
+		// ====================================================
+		// WELCOME
+		// ====================================================
 
-			"type": "welcome",
+		reply :=
+			map[string]string{
+				"type": "welcome",
 
-			"message": "AMEN backend connected",
+				"message": "AMEN backend connected",
+			}
+
+		response, err :=
+			json.Marshal(
+				reply,
+			)
+
+		if err == nil {
+
+			client.mu.Lock()
+
+			err =
+				client.conn.WriteMessage(
+					websocket.TextMessage,
+					response,
+				)
+
+			client.mu.Unlock()
+
+			if err != nil {
+
+				log.Println(
+					"[WS] Welcome write error:",
+					err,
+				)
+			}
 		}
 
-		response, _ :=
-			json.Marshal(reply)
+		// ====================================================
+		// DEVICE STATUS
+		// ====================================================
 
-		client.mu.Lock()
-
-		client.conn.WriteMessage(
-			websocket.TextMessage,
-			response,
+		s.BroadcastDeviceStatus(
+			true,
 		)
 
-		client.mu.Unlock()
+		// ====================================================
+		// CONNECTED DEVICES
+		// ====================================================
+		// Initial state untuk ESP32/device baru
+		s.SendState(
+			client,
+		)
+		s.BroadcastDevices()
 
-		s.BroadcastDeviceStatus(true)
+	// ========================================================
+	// CLIENT REGISTER
+	// ========================================================
 
 	case "client.register":
 
@@ -231,20 +377,49 @@ func (s *RealtimeServer) handleMessage(
 			Type string `json:"clientType"`
 		}
 
-		json.Unmarshal(
-			data,
-			&clientData,
-		)
+		err :=
+			json.Unmarshal(
+				data,
+				&clientData,
+			)
 
-		client.ID = clientData.ID
-		client.Name = clientData.Name
-		client.Type = clientData.Type
+		if err != nil {
+
+			log.Println(
+				"[CLIENT] Invalid register:",
+				err,
+			)
+
+			return
+		}
+
+		client.ID =
+			clientData.ID
+
+		client.Name =
+			clientData.Name
+
+		client.Type =
+			clientData.Type
 
 		log.Printf(
 			"[CLIENT] %s %s\n",
 			client.Type,
 			client.Name,
 		)
+		// Initial state untuk Wails/HP/iPad
+		s.SendState(
+			client,
+		)
+		// ====================================================
+		// CONNECTED DEVICES
+		// ====================================================
+
+		s.BroadcastDevices()
+
+	// ========================================================
+	// ESP32 COMMAND
+	// ========================================================
 
 	case "mixer.command":
 
@@ -257,6 +432,12 @@ func (s *RealtimeServer) handleMessage(
 			)
 
 		if err != nil {
+
+			log.Println(
+				"[MIXER] Invalid command:",
+				err,
+			)
+
 			return
 		}
 
@@ -266,7 +447,13 @@ func (s *RealtimeServer) handleMessage(
 			cmd.Value,
 		)
 
-		s.broadcast(data)
+		s.broadcast(
+			data,
+		)
+
+	// ========================================================
+	// CHANNEL UPDATE
+	// ========================================================
 
 	case "CHANNEL_UPDATE":
 
@@ -274,7 +461,13 @@ func (s *RealtimeServer) handleMessage(
 			"[CHANNEL UPDATE]",
 		)
 
-		s.broadcast(data)
+		s.broadcast(
+			data,
+		)
+
+	// ========================================================
+	// UNKNOWN
+	// ========================================================
 
 	default:
 
@@ -282,9 +475,77 @@ func (s *RealtimeServer) handleMessage(
 			"[WS] Unknown:",
 			header.Type,
 		)
+	}
+}
 
+// ============================================================
+// CONNECTED DEVICES
+// ============================================================
+
+func (s *RealtimeServer) getConnectedDevices() []protocol.DeviceInfo {
+
+	s.mu.Lock()
+
+	defer s.mu.Unlock()
+
+	devices :=
+		make(
+			[]protocol.DeviceInfo,
+			0,
+			len(s.clients),
+		)
+
+	for client := range s.clients {
+
+		// socket yang belum register
+		// tidak ditampilkan
+
+		if client.ID == "" {
+			continue
+		}
+
+		devices =
+			append(
+				devices,
+				protocol.DeviceInfo{
+					ID: client.ID,
+
+					Name: client.Name,
+
+					ClientType: client.Type,
+
+					Connected: true,
+				},
+			)
 	}
 
+	return devices
+}
+
+// ============================================================
+// BROADCAST DEVICES
+// ============================================================
+
+func (s *RealtimeServer) BroadcastDevices() {
+
+	devices :=
+		s.getConnectedDevices()
+
+	message :=
+		protocol.RealtimeMessage{
+			Type: protocol.MessageDevices,
+
+			Devices: devices,
+		}
+
+	log.Printf(
+		"[DEVICES] Connected: %d\n",
+		len(devices),
+	)
+
+	s.BroadcastJSON(
+		message,
+	)
 }
 
 // ============================================================
@@ -296,6 +557,16 @@ func (s *RealtimeServer) removeClient(
 ) {
 
 	s.mu.Lock()
+
+	_, exists :=
+		s.clients[client]
+
+	if !exists {
+
+		s.mu.Unlock()
+
+		return
+	}
 
 	delete(
 		s.clients,
@@ -312,6 +583,11 @@ func (s *RealtimeServer) removeClient(
 		total,
 	)
 
+	// ========================================================
+	// UPDATE CONNECTED DEVICES
+	// ========================================================
+
+	s.BroadcastDevices()
 }
 
 // ============================================================
@@ -321,10 +597,24 @@ func (s *RealtimeServer) removeClient(
 func (s *RealtimeServer) broadcast(
 	data []byte,
 ) {
-	log.Println(
-		"[WS] Broadcasting:",
-		string(data),
+
+	// ========================================================
+	// LOG
+	// ========================================================
+	// Simpan state terbaru jika message
+	// adalah CHANNEL_UPDATE
+	s.captureChannelState(
+		data,
 	)
+	logRealtimeJSON(
+		"[WS] Broadcasting:",
+		data,
+	)
+
+	// ========================================================
+	// COPY CLIENT LIST
+	// ========================================================
+
 	s.mu.Lock()
 
 	clients :=
@@ -345,6 +635,10 @@ func (s *RealtimeServer) broadcast(
 
 	s.mu.Unlock()
 
+	// ========================================================
+	// SEND
+	// ========================================================
+
 	for _, client := range clients {
 
 		client.mu.Lock()
@@ -364,12 +658,11 @@ func (s *RealtimeServer) broadcast(
 				err,
 			)
 
-			s.removeClient(client)
-
+			s.removeClient(
+				client,
+			)
 		}
-
 	}
-
 }
 
 // ============================================================
@@ -381,15 +674,23 @@ func (s *RealtimeServer) BroadcastJSON(
 ) {
 
 	data, err :=
-		json.Marshal(message)
+		json.Marshal(
+			message,
+		)
 
 	if err != nil {
+
+		log.Println(
+			"[WS] JSON marshal error:",
+			err,
+		)
 
 		return
 	}
 
-	s.broadcast(data)
-
+	s.broadcast(
+		data,
+	)
 }
 
 // ============================================================
@@ -404,11 +705,9 @@ func (s *RealtimeServer) BroadcastChannelUpdate(
 
 	message :=
 		protocol.RealtimeMessage{
-
 			Type: protocol.MessageChannelUpdate,
 
 			Channel: &protocol.ChannelUpdate{
-
 				ID: id,
 
 				Volume: &volume,
@@ -417,8 +716,9 @@ func (s *RealtimeServer) BroadcastChannelUpdate(
 			},
 		}
 
-	s.BroadcastJSON(message)
-
+	s.BroadcastJSON(
+		message,
+	)
 }
 
 // ============================================================
@@ -431,14 +731,14 @@ func (s *RealtimeServer) BroadcastDeviceStatus(
 
 	message :=
 		protocol.RealtimeMessage{
-
 			Type: protocol.MessageDeviceStatus,
 
 			Connected: &connected,
 		}
 
-	s.BroadcastJSON(message)
-
+	s.BroadcastJSON(
+		message,
+	)
 }
 
 // ============================================================
@@ -454,7 +754,6 @@ func (s *RealtimeServer) ClientCount() int {
 	return len(
 		s.clients,
 	)
-
 }
 
 // ============================================================
@@ -468,10 +767,18 @@ func StartRealtimeServer(
 	mux :=
 		http.NewServeMux()
 
+	// ========================================================
+	// WEBSOCKET
+	// ========================================================
+
 	mux.HandleFunc(
 		"/ws",
 		server.HandleWebSocket,
 	)
+
+	// ========================================================
+	// HEALTH CHECK
+	// ========================================================
 
 	mux.HandleFunc(
 		"/",
@@ -486,9 +793,12 @@ func StartRealtimeServer(
 						"AMEN MIXER REALTIME SERVER OK",
 					),
 				)
-
 		},
 	)
+
+	// ========================================================
+	// START SERVER
+	// ========================================================
 
 	go func() {
 
@@ -506,7 +816,6 @@ func StartRealtimeServer(
 
 		httpServer :=
 			&http.Server{
-
 				Addr: "0.0.0.0:8081",
 
 				Handler: mux,
@@ -523,9 +832,6 @@ func StartRealtimeServer(
 				"[WS]",
 				err,
 			)
-
 		}
-
 	}()
-
 }

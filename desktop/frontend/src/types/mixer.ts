@@ -6,13 +6,13 @@
 | Semua komunikasi:
 |
 | Vue Frontend
-|      |
-|      | WebSocket
-|      |
+|      ↓
+| WebSocket
+|      ↓
 | Go Backend
-|      |
-|      | Serial
-|      |
+|      ↓
+| Serial
+|      ↓
 | ESP32
 |
 |--------------------------------------------------------------------------
@@ -30,32 +30,25 @@ export interface MixerChannel {
   id:
   number
 
-
   name:
   string
-
 
   app:
   string
 
-
   volume:
   number
-
 
   muted:
   boolean
 
-
   connected:
   boolean
-
 
   selected:
   boolean
 
 }
-
 
 
 /*
@@ -66,20 +59,16 @@ export interface MixerChannel {
 
 export interface ChannelUpdate {
 
-
   id:
   number
 
-
   volume?:
   number
-
 
   muted?:
   boolean
 
 }
-
 
 
 /*
@@ -88,19 +77,15 @@ export interface ChannelUpdate {
 |--------------------------------------------------------------------------
 */
 
-
 export type MixerCommandType =
   | "ENC"
   | "BTN"
 
 
-
 export interface MixerCommand {
-
 
   type:
   MixerCommandType
-
 
 
   /*
@@ -115,7 +100,6 @@ export interface MixerCommand {
   number
 
 
-
   /*
   ENC:
   +1 / -1
@@ -127,9 +111,30 @@ export interface MixerCommand {
   value:
   number
 
-
 }
 
+
+/*
+|--------------------------------------------------------------------------
+| CONNECTED DEVICE
+|--------------------------------------------------------------------------
+*/
+
+export interface ConnectedDevice {
+
+  id:
+  string
+
+  name:
+  string
+
+  clientType:
+  string
+
+  connected:
+  boolean
+
+}
 
 
 /*
@@ -137,7 +142,6 @@ export interface MixerCommand {
 | REALTIME MESSAGE
 |--------------------------------------------------------------------------
 */
-
 
 export type RealtimeMessageType =
 
@@ -149,14 +153,13 @@ export type RealtimeMessageType =
 
   | "DEVICE_STATUS"
 
+  | "DEVICES"
 
 
 export interface RealtimeMessage {
 
-
   type:
   RealtimeMessageType
-
 
 
   /*
@@ -167,14 +170,12 @@ export interface RealtimeMessage {
   MixerChannel[]
 
 
-
   /*
   dipakai CHANNEL_UPDATE
   */
 
   channel?:
   ChannelUpdate
-
 
 
   /*
@@ -185,19 +186,23 @@ export interface RealtimeMessage {
   MixerCommand
 
 
-
   /*
-  status device
-
-  contoh:
-  ESP32 connected
+  status ESP32
   */
 
   connected?:
   boolean
 
-}
 
+  /*
+  daftar client/device
+  yang sedang terhubung
+  */
+
+  devices?:
+  ConnectedDevice[]
+
+}
 
 
 /*
@@ -206,17 +211,13 @@ export interface RealtimeMessage {
 |--------------------------------------------------------------------------
 */
 
-
 export interface DeviceStatus {
-
 
   connected:
   boolean
 
-
   name?:
   string
-
 
   port?:
   string
