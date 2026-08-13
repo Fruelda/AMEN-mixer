@@ -14,17 +14,15 @@ import (
 type App struct {
 	ctx context.Context
 
-	audio *audio.Manager
-
+	audio    *audio.Manager
 	realtime *RealtimeServer
 }
 
 // ============================================================
-// NEW APP
+// CREATE APP
 // ============================================================
 
 func NewApp() *App {
-
 	return &App{
 		audio: audio.New(),
 	}
@@ -37,21 +35,11 @@ func NewApp() *App {
 func (a *App) startup(
 	ctx context.Context,
 ) {
+	a.ctx = ctx
 
-	a.ctx =
-		ctx
-
-	fmt.Println(
-		"===================================",
-	)
-
-	fmt.Println(
-		"AMEN MIXER STARTING...",
-	)
-
-	fmt.Println(
-		"===================================",
-	)
+	fmt.Println("===================================")
+	fmt.Println("AMEN MIXER STARTING...")
+	fmt.Println("===================================")
 
 	// ========================================================
 	// AUDIO + WEBSOCKET
@@ -71,29 +59,23 @@ func (a *App) startup(
 
 	a.startSerial()
 
-	fmt.Println(
-		"===================================",
-	)
-
-	fmt.Println(
-		"AMEN MIXER READY",
-	)
-
-	fmt.Println(
-		"===================================",
-	)
+	fmt.Println("===================================")
+	fmt.Println("AMEN MIXER READY")
+	fmt.Println("===================================")
 }
 
 // ============================================================
-// GREET
+// SHUTDOWN
 // ============================================================
 
-func (a *App) Greet(
-	name string,
-) string {
+func (a *App) shutdown(
+	_ context.Context,
+) {
+	// ========================================================
+	// LOCAL NETWORK DISCOVERY
+	// ========================================================
 
-	return fmt.Sprintf(
-		"Hello %s, It's show time!",
-		name,
-	)
+	stopMDNS()
+
+	fmt.Println("[APP] AMEN MIXER STOPPED")
 }

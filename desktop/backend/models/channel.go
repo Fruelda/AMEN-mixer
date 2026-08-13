@@ -1,5 +1,18 @@
 package models
 
+// ============================================================
+// CHANNEL
+// ============================================================
+//
+// State utama satu channel mixer.
+//
+// Dipakai oleh:
+// - audio.Manager
+// - Wails frontend
+// - realtime state sync
+//
+// ============================================================
+
 type Channel struct {
 	ID        int    `json:"id"`
 	Name      string `json:"name"`

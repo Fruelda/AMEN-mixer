@@ -5,7 +5,15 @@ import (
 	"strings"
 )
 
+// ============================================================
+// WINDOWS AUDIO
+// ============================================================
+
 type WindowsAudio struct{}
+
+// ============================================================
+// CREATE WINDOWS AUDIO
+// ============================================================
 
 func NewWindowsAudio() *WindowsAudio {
 	return &WindowsAudio{}
@@ -38,17 +46,11 @@ func (w *WindowsAudio) SetVolume(
 	app string,
 	volume int,
 ) error {
-	app =
-		strings.ToLower(
-			strings.TrimSpace(
-				app,
-			),
-		)
+	app = strings.ToLower(
+		strings.TrimSpace(app),
+	)
 
-	volume =
-		normalizeVolume(
-			volume,
-		)
+	volume = normalizeVolume(volume)
 
 	fmt.Printf(
 		"[WINDOWS AUDIO] %s => %d%%\n",
@@ -76,12 +78,9 @@ func (w *WindowsAudio) SetMuted(
 	app string,
 	muted bool,
 ) error {
-	app =
-		strings.ToLower(
-			strings.TrimSpace(
-				app,
-			),
-		)
+	app = strings.ToLower(
+		strings.TrimSpace(app),
+	)
 
 	fmt.Printf(
 		"[WINDOWS AUDIO] %s muted => %t\n",

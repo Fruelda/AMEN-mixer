@@ -17,145 +17,73 @@ func (s *RealtimeServer) handleMessage(
 	client *WSClient,
 	data []byte,
 ) {
-
 	var header struct {
 		Type string `json:"type"`
 	}
 
-	err :=
-		json.Unmarshal(
-			data,
-			&header,
-		)
-
-	if err != nil {
-
-		log.Println(
-			"[WS] Invalid JSON:",
-			err,
-		)
-
+	if err := json.Unmarshal(data, &header); err != nil {
+		log.Println("[WS] Invalid JSON:", err)
 		return
 	}
 
-	// ========================================================
-	// ROUTING
-	// ========================================================
-
 	switch header.Type {
-
 	case "device.register":
-
-		s.handleDeviceRegister(
-			client,
-			data,
-		)
+		s.handleDeviceRegister(client, data)
 
 	case "client.register":
-
-		s.handleClientRegister(
-			client,
-			data,
-		)
+		s.handleClientRegister(client, data)
 
 	case "mixer.command":
-
-		s.handleMixerCommand(
-			data,
-		)
+		s.handleMixerCommand(data)
 
 	case "CHANNEL_UPDATE":
-
-		s.handleChannelUpdate(
-			client,
-			data,
-		)
+		s.handleChannelUpdate(client, data)
 
 	default:
-
-		log.Println(
-			"[WS] Unknown:",
-			header.Type,
-		)
+		log.Println("[WS] Unknown:", header.Type)
 	}
 }
 
 // ============================================================
 // DEVICE REGISTER
-// ESP32 / HARDWARE
 // ============================================================
 
 func (s *RealtimeServer) handleDeviceRegister(
 	client *WSClient,
 	data []byte,
 ) {
-
 	var device protocol.DeviceRegister
 
-	err :=
-		json.Unmarshal(
-			data,
-			&device,
-		)
-
-	if err != nil {
-
-		log.Println(
-			"[DEVICE] Invalid register:",
-			err,
-		)
-
+	if err := json.Unmarshal(data, &device); err != nil {
+		log.Println("[DEVICE] Invalid register:", err)
 		return
 	}
 
-	// ========================================================
-	// SAVE IDENTITY
-	// ========================================================
-
-	client.ID =
-		device.ID
-
-	client.Name =
-		device.Name
-
-	client.Type =
-		"hardware"
+	client.ID = device.ID
+	client.Name = device.Name
+	client.Type = "hardware"
 
 	log.Printf(
 		"[DEVICE] %s connected\n",
 		device.ID,
 	)
 
-	// ========================================================
-	// WELCOME MESSAGE
-	// ========================================================
+	reply := map[string]string{
+		"type":    "welcome",
+		"message": "AMEN backend connected",
+	}
 
-	reply :=
-		map[string]string{
-			"type": "welcome",
-
-			"message": "AMEN backend connected",
-		}
-
-	response, err :=
-		json.Marshal(
-			reply,
-		)
-
-	if err == nil {
-
+	if response, err := json.Marshal(reply); err == nil {
 		client.mu.Lock()
 
-		err =
-			client.conn.WriteMessage(
-				websocket.TextMessage,
-				response,
-			)
+		err = client.conn.WriteMessage(
+			websocket.TextMessage,
+			response,
+		)
 
 		client.mu.Unlock()
 
 		if err != nil {
-
 			log.Println(
 				"[WS] Welcome write error:",
 				err,
@@ -163,75 +91,33 @@ func (s *RealtimeServer) handleDeviceRegister(
 		}
 	}
 
-	// ========================================================
-	// DEVICE CONNECTED
-	// ========================================================
-
-	s.BroadcastDeviceStatus(
-		true,
-	)
-
-	// ========================================================
-	// SEND CURRENT MIXER STATE
-	// ========================================================
-
-	s.SendState(
-		client,
-	)
-
-	// ========================================================
-	// UPDATE DEVICE LIST
-	// ========================================================
-
+	s.BroadcastDeviceStatus(true)
+	s.SendState(client)
 	s.BroadcastDevices()
 }
 
 // ============================================================
 // CLIENT REGISTER
-// WAILS / IPHONE / ANDROID / BROWSER
 // ============================================================
 
 func (s *RealtimeServer) handleClientRegister(
 	client *WSClient,
 	data []byte,
 ) {
-
-	var clientData struct {
-		ID string `json:"id"`
-
+	var payload struct {
+		ID   string `json:"id"`
 		Name string `json:"name"`
-
 		Type string `json:"clientType"`
 	}
 
-	err :=
-		json.Unmarshal(
-			data,
-			&clientData,
-		)
-
-	if err != nil {
-
-		log.Println(
-			"[CLIENT] Invalid register:",
-			err,
-		)
-
+	if err := json.Unmarshal(data, &payload); err != nil {
+		log.Println("[CLIENT] Invalid register:", err)
 		return
 	}
 
-	// ========================================================
-	// SAVE IDENTITY
-	// ========================================================
-
-	client.ID =
-		clientData.ID
-
-	client.Name =
-		clientData.Name
-
-	client.Type =
-		clientData.Type
+	client.ID = payload.ID
+	client.Name = payload.Name
+	client.Type = payload.Type
 
 	log.Printf(
 		"[CLIENT] %s %s\n",
@@ -239,45 +125,21 @@ func (s *RealtimeServer) handleClientRegister(
 		client.Name,
 	)
 
-	// ========================================================
-	// SEND CURRENT STATE
-	// ========================================================
-
-	s.SendState(
-		client,
-	)
-
-	// ========================================================
-	// BROADCAST DEVICE LIST
-	// ========================================================
-
+	s.SendState(client)
 	s.BroadcastDevices()
 }
 
 // ============================================================
 // MIXER COMMAND
-// ESP32 COMMAND
 // ============================================================
 
 func (s *RealtimeServer) handleMixerCommand(
 	data []byte,
 ) {
-
 	var cmd protocol.MixerCommand
 
-	err :=
-		json.Unmarshal(
-			data,
-			&cmd,
-		)
-
-	if err != nil {
-
-		log.Println(
-			"[MIXER] Invalid command:",
-			err,
-		)
-
+	if err := json.Unmarshal(data, &cmd); err != nil {
+		log.Println("[MIXER] Invalid command:", err)
 		return
 	}
 
@@ -287,59 +149,35 @@ func (s *RealtimeServer) handleMixerCommand(
 		cmd.Value,
 	)
 
-	// Broadcast command ke client lain.
-	s.broadcast(
-		data,
-	)
+	s.broadcast(data)
 }
 
 // ============================================================
 // CHANNEL UPDATE
-// HP / BROWSER / DESKTOP
 // ============================================================
 
 func (s *RealtimeServer) handleChannelUpdate(
 	client *WSClient,
 	data []byte,
 ) {
-
 	var message protocol.RealtimeMessage
 
-	err :=
-		json.Unmarshal(
-			data,
-			&message,
-		)
-
-	if err != nil {
-
+	if err := json.Unmarshal(data, &message); err != nil {
 		log.Println(
 			"[CHANNEL UPDATE] Invalid JSON:",
 			err,
 		)
-
 		return
 	}
 
-	// ========================================================
-	// VALIDATE
-	// ========================================================
-
 	if message.Channel == nil {
-
 		log.Println(
 			"[CHANNEL UPDATE] Missing channel payload",
 		)
-
 		return
 	}
 
-	update :=
-		*message.Channel
-
-	// ========================================================
-	// LOG
-	// ========================================================
+	update := *message.Channel
 
 	log.Printf(
 		"[CHANNEL UPDATE] client=%s channel=%d volume=%v muted=%v\n",
@@ -349,63 +187,29 @@ func (s *RealtimeServer) handleChannelUpdate(
 		update.Muted,
 	)
 
-	// ========================================================
-	// FALLBACK
-	// ========================================================
-	//
-	// Kalau audio handler belum dipasang,
-	// server masih bisa broadcast seperti sistem lama.
-	//
-	// ========================================================
-
+	// Fallback kalau audio handler belum tersedia.
 	if s.onChannelUpdate == nil {
-
 		log.Println(
 			"[CHANNEL UPDATE] No audio handler - broadcast fallback",
 		)
 
-		s.broadcast(
-			data,
-		)
-
+		s.broadcast(data)
 		return
 	}
 
-	// ========================================================
-	// APPLY TO AUDIO MANAGER
-	// ========================================================
-	//
-	// Jangan broadcast data mentah di sini.
-	//
-	// audio.Manager akan:
-	//
-	// 1. apply volume/mute
-	// 2. update authoritative state
-	// 3. panggil audioBridge
-	// 4. BroadcastChannelUpdate()
-	//
-	// Dengan begitu update tidak broadcast dua kali.
-	//
-	// ========================================================
-
-	err =
-		s.onChannelUpdate(
-			update,
-		)
-
-	if err != nil {
-
+	/*
+		Audio manager menjadi authoritative state:
+		1. apply volume/mute
+		2. update state
+		3. trigger bridge
+		4. broadcast CHANNEL_UPDATE
+	*/
+	if err := s.onChannelUpdate(update); err != nil {
 		log.Println(
 			"[CHANNEL UPDATE] Apply failed:",
 			err,
 		)
 
-		// Kalau gagal, kirim state server yang benar
-		// kembali ke client pengirim.
-		s.SendState(
-			client,
-		)
-
-		return
+		s.SendState(client)
 	}
 }

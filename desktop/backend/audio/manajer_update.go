@@ -7,10 +7,9 @@ import "fmt"
 // ============================================================
 //
 // Bisa menerima:
-//
-// volume saja
-// mute saja
-// atau keduanya.
+// - volume saja
+// - mute saja
+// - atau keduanya.
 //
 // nil = field tidak diubah.
 //
@@ -27,55 +26,37 @@ func (m *Manager) ApplyChannelUpdate(
 	// FIND CHANNEL
 	// ========================================================
 
-	index :=
-		-1
+	index := -1
 
 	for i := range m.channels {
-
 		if m.channels[i].ID == id {
 			index = i
-
 			break
 		}
 	}
 
 	if index == -1 {
 		m.mutex.Unlock()
-
-		return fmt.Errorf(
-			"audio channel %d not found",
-			id,
-		)
+		return fmt.Errorf("audio channel %d not found", id)
 	}
 
-	channel :=
-		&m.channels[index]
-
-	changed :=
-		false
+	channel := &m.channels[index]
+	changed := false
 
 	// ========================================================
 	// VOLUME
 	// ========================================================
 
 	if volume != nil {
-		newVolume :=
-			normalizeVolume(
-				*volume,
-			)
+		newVolume := normalizeVolume(*volume)
 
 		if channel.Volume != newVolume {
-
 			if m.windows != nil {
-				err :=
-					m.windows.SetVolume(
-						channel.App,
-						newVolume,
-					)
-
-				if err != nil {
+				if err := m.windows.SetVolume(
+					channel.App,
+					newVolume,
+				); err != nil {
 					m.mutex.Unlock()
-
 					return fmt.Errorf(
 						"set volume channel %d: %w",
 						id,
@@ -84,11 +65,8 @@ func (m *Manager) ApplyChannelUpdate(
 				}
 			}
 
-			channel.Volume =
-				newVolume
-
-			changed =
-				true
+			channel.Volume = newVolume
+			changed = true
 		}
 	}
 
@@ -97,21 +75,15 @@ func (m *Manager) ApplyChannelUpdate(
 	// ========================================================
 
 	if muted != nil {
-		newMuted :=
-			*muted
+		newMuted := *muted
 
 		if channel.Muted != newMuted {
-
 			if m.windows != nil {
-				err :=
-					m.windows.SetMuted(
-						channel.App,
-						newMuted,
-					)
-
-				if err != nil {
+				if err := m.windows.SetMuted(
+					channel.App,
+					newMuted,
+				); err != nil {
 					m.mutex.Unlock()
-
 					return fmt.Errorf(
 						"set mute channel %d: %w",
 						id,
@@ -120,25 +92,19 @@ func (m *Manager) ApplyChannelUpdate(
 				}
 			}
 
-			channel.Muted =
-				newMuted
-
-			changed =
-				true
+			channel.Muted = newMuted
+			changed = true
 		}
 	}
 
-	// Copy final state.
-	updated :=
-		*channel
-
-	listener :=
-		m.listener
+	// Copy state sebelum mutex dilepas.
+	updated := *channel
+	listener := m.listener
 
 	// Lepas mutex sebelum broadcast.
 	m.mutex.Unlock()
 
-	// Kalau state sama, tidak usah broadcast.
+	// State sama, tidak perlu broadcast.
 	if !changed {
 		return nil
 	}
@@ -148,9 +114,7 @@ func (m *Manager) ApplyChannelUpdate(
 	// ========================================================
 
 	if listener != nil {
-		listener.OnChannelUpdate(
-			updated,
-		)
+		listener.OnChannelUpdate(updated)
 	}
 
 	return nil

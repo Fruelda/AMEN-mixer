@@ -1,4 +1,8 @@
 import {
+    onUnmounted
+} from "vue"
+
+import {
     useRealtime
 } from "./useRealtime"
 
@@ -6,161 +10,141 @@ import {
     mixerStore
 } from "../stores/mixer"
 
+import type {
+    RealtimeMessage
+} from "../types/mixer"
+
 
 export function useMixerSocket() {
 
     const {
         connect,
-        subscribe,
-        send
+        subscribe
     } = useRealtime()
 
 
-    // =====================================================
+    let unsubscribe:
+        (() => void) | null =
+        null
+
+
+    // ============================================================
+    // MESSAGE
+    // ============================================================
+
+    function handleMessage(
+        message: RealtimeMessage
+    ) {
+
+        console.log(
+            "[REALTIME]",
+            message
+        )
+
+
+        switch (
+        message.type
+        ) {
+
+            case "STATE":
+
+                mixerStore.setChannels(
+                    message.channels
+                )
+
+                return
+
+
+            case "CHANNEL_UPDATE":
+
+                mixerStore.applyRemoteUpdate(
+                    message
+                )
+
+                return
+
+
+            case "COMMAND":
+
+                mixerStore.handleCommand(
+                    message.command
+                )
+
+                return
+
+
+            case "DEVICES":
+
+                mixerStore.setDevices(
+                    message.devices
+                )
+
+                return
+
+
+            case "DEVICE_STATUS":
+
+                mixerStore.setConnected(
+                    message.connected
+                )
+
+                return
+
+        }
+
+    }
+
+
+    // ============================================================
     // START
-    // =====================================================
+    // ============================================================
 
     function start() {
 
         connect()
 
 
-        subscribe(
-            (message) => {
-
-                console.log(
-                    "[REALTIME]",
-                    message
-                )
+        if (
+            unsubscribe
+        ) {
+            return
+        }
 
 
-                // =========================================
-                // CHANNEL UPDATE
-                // =========================================
-
-                if (
-                    message.type ===
-                    "CHANNEL_UPDATE"
-                ) {
-
-                    mixerStore.applyRemoteUpdate(
-                        message
-                    )
-
-                    return
-
-                }
-
-
-                // =========================================
-                // ESP32 COMMAND
-                // =========================================
-
-                if (
-                    message.type ===
-                    "COMMAND" &&
-                    message.command
-                ) {
-
-                    mixerStore.handleCommand(
-                        message.command
-                    )
-
-                    return
-
-                }
-
-
-                // =========================================
-                // CONNECTED DEVICES
-                // =========================================
-
-                if (
-                    message.type ===
-                    "DEVICES" &&
-                    Array.isArray(
-                        message.devices
-                    )
-                ) {
-
-                    mixerStore.setDevices(
-                        message.devices
-                    )
-
-
-                    console.log(
-                        "[DEVICES]",
-                        message.devices
-                    )
-
-
-                    return
-
-                }
-
-
-                // =========================================
-                // DEVICE STATUS
-                // =========================================
-
-                if (
-                    message.type ===
-                    "DEVICE_STATUS" &&
-                    typeof message.connected ===
-                    "boolean"
-                ) {
-
-                    mixerStore.setConnected(
-                        message.connected
-                    )
-
-                    return
-
-                }
-
-            }
-        )
+        unsubscribe =
+            subscribe(
+                handleMessage
+            )
 
     }
 
 
-    // =====================================================
-    // UPDATE CHANNEL
-    // =====================================================
+    // ============================================================
+    // STOP
+    // ============================================================
 
-    function updateChannel(
-        id: number,
-        volume: number
-    ) {
+    function stop() {
 
-        send({
+        unsubscribe?.()
 
-            type:
-                "CHANNEL_UPDATE",
-
-            channel: {
-
-                id,
-
-                volume
-
-            }
-
-        })
+        unsubscribe =
+            null
 
     }
 
 
-    // =====================================================
-    // RETURN
-    // =====================================================
+    // ============================================================
+    // CLEANUP
+    // ============================================================
+
+    onUnmounted(
+        stop
+    )
+
 
     return {
-
         start,
-
-        updateChannel
-
+        stop
     }
 
 }

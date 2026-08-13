@@ -1,225 +1,120 @@
-/*
-|--------------------------------------------------------------------------
-| AMEN Mixer Data Contract
-|--------------------------------------------------------------------------
-|
-| Semua komunikasi:
-|
-| Vue Frontend
-|      ↓
-| WebSocket
-|      ↓
-| Go Backend
-|      ↓
-| Serial
-|      ↓
-| ESP32
-|
-|--------------------------------------------------------------------------
-*/
-
-
-/*
-|--------------------------------------------------------------------------
-| CHANNEL
-|--------------------------------------------------------------------------
-*/
+// ============================================================
+// CHANNEL
+// ============================================================
 
 export interface MixerChannel {
-
-  id:
-  number
-
-  name:
-  string
-
-  app:
-  string
-
-  volume:
-  number
-
-  muted:
-  boolean
-
-  connected:
-  boolean
-
-  selected:
-  boolean
-
+  id: number
+  name: string
+  app: string
+  volume: number
+  muted: boolean
+  connected: boolean
+  selected: boolean
 }
 
 
-/*
-|--------------------------------------------------------------------------
-| AUDIO UPDATE
-|--------------------------------------------------------------------------
-*/
+// ============================================================
+// CHANNEL UPDATE
+// ============================================================
 
 export interface ChannelUpdate {
-
-  id:
-  number
-
-  volume?:
-  number
-
-  muted?:
-  boolean
-
+  id: number
+  volume?: number
+  muted?: boolean
 }
 
 
-/*
-|--------------------------------------------------------------------------
-| ESP32 COMMAND
-|--------------------------------------------------------------------------
-*/
+// ============================================================
+// MIXER COMMAND
+// ============================================================
 
 export type MixerCommandType =
   | "ENC"
   | "BTN"
 
-
 export interface MixerCommand {
-
-  type:
-  MixerCommandType
-
-
-  /*
-  channel yang dikontrol
-
-  contoh:
-  1 = Master
-  2 = Browser
-  */
-
-  channel:
-  number
-
-
-  /*
-  ENC:
-  +1 / -1
-
-  BTN:
-  1 = pressed
-  */
-
-  value:
-  number
-
+  type: MixerCommandType
+  channel: number
+  value: number
 }
 
 
-/*
-|--------------------------------------------------------------------------
-| CONNECTED DEVICE
-|--------------------------------------------------------------------------
-*/
+// ============================================================
+// CONNECTED DEVICE
+// ============================================================
+
+export type ClientType =
+  | "desktop"
+  | "mobile"
+  | "tablet"
+  | "browser"
+  | "hardware"
 
 export interface ConnectedDevice {
-
-  id:
-  string
-
-  name:
-  string
-
-  clientType:
-  string
-
-  connected:
-  boolean
-
+  id: string
+  name: string
+  clientType: ClientType
+  connected: boolean
 }
 
 
-/*
-|--------------------------------------------------------------------------
-| REALTIME MESSAGE
-|--------------------------------------------------------------------------
-*/
+// ============================================================
+// STATE MESSAGE
+// ============================================================
 
-export type RealtimeMessageType =
-
-  | "STATE"
-
-  | "CHANNEL_UPDATE"
-
-  | "COMMAND"
-
-  | "DEVICE_STATUS"
-
-  | "DEVICES"
-
-
-export interface RealtimeMessage {
-
-  type:
-  RealtimeMessageType
-
-
-  /*
-  dipakai STATE
-  */
-
-  channels?:
-  MixerChannel[]
-
-
-  /*
-  dipakai CHANNEL_UPDATE
-  */
-
-  channel?:
-  ChannelUpdate
-
-
-  /*
-  dipakai COMMAND
-  */
-
-  command?:
-  MixerCommand
-
-
-  /*
-  status ESP32
-  */
-
-  connected?:
-  boolean
-
-
-  /*
-  daftar client/device
-  yang sedang terhubung
-  */
-
-  devices?:
-  ConnectedDevice[]
-
+export interface StateMessage {
+  type: "STATE"
+  channels: MixerChannel[]
 }
 
 
-/*
-|--------------------------------------------------------------------------
-| DEVICE STATUS
-|--------------------------------------------------------------------------
-*/
+// ============================================================
+// CHANNEL UPDATE MESSAGE
+// ============================================================
 
-export interface DeviceStatus {
-
-  connected:
-  boolean
-
-  name?:
-  string
-
-  port?:
-  string
-
+export interface ChannelUpdateMessage {
+  type: "CHANNEL_UPDATE"
+  channel: ChannelUpdate
 }
+
+
+// ============================================================
+// COMMAND MESSAGE
+// ============================================================
+
+export interface CommandMessage {
+  type: "COMMAND"
+  command: MixerCommand
+}
+
+
+// ============================================================
+// DEVICES MESSAGE
+// ============================================================
+
+export interface DevicesMessage {
+  type: "DEVICES"
+  devices: ConnectedDevice[]
+}
+
+
+// ============================================================
+// DEVICE STATUS MESSAGE
+// ============================================================
+
+export interface DeviceStatusMessage {
+  type: "DEVICE_STATUS"
+  connected: boolean
+}
+
+
+// ============================================================
+// REALTIME MESSAGE
+// ============================================================
+
+export type RealtimeMessage =
+  | StateMessage
+  | ChannelUpdateMessage
+  | CommandMessage
+  | DevicesMessage
+  | DeviceStatusMessage

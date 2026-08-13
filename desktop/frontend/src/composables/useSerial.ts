@@ -1,102 +1,55 @@
 import {
   onMounted,
-  onUnmounted,
+  onUnmounted
 } from "vue"
 
 import {
-  EventsOn,
-  EventsOff,
+  EventsOn
 } from "../../wailsjs/runtime/runtime"
 
+import {
+  isWailsEnvironment
+} from "../realtime/environment"
 
-export interface SerialCommand {
-  type: "ENC" | "BTN"
-  channel: number
-  value: number
-}
+import type {
+  MixerCommand
+} from "../types/mixer"
 
-
-/*
-|--------------------------------------------------------------------------
-| DETECT WAILS
-|--------------------------------------------------------------------------
-*/
-
-function isWailsEnvironment(): boolean {
-
-  if (
-    typeof window === "undefined"
-  ) {
-    return false
-  }
-
-
-  /*
-  |--------------------------------------------------------------------------
-  | Wails runtime
-  |--------------------------------------------------------------------------
-  */
-
-  return (
-    "__WAILS_RUNTIME__" in window
-  )
-}
-
-
-/*
-|--------------------------------------------------------------------------
-| USE SERIAL
-|--------------------------------------------------------------------------
-*/
 
 export function useSerial(
   callback: (
-    command: SerialCommand
+    command: MixerCommand
   ) => void
 ) {
 
-  let wailsEnabled =
-    false
+  let unsubscribe:
+    (() => void) | null =
+    null
 
 
-  /*
-  |--------------------------------------------------------------------------
-  | MOUNT
-  |--------------------------------------------------------------------------
-  */
+  // ============================================================
+  // START
+  // ============================================================
 
-  onMounted(() => {
-
-    /*
-    |--------------------------------------------------------------------------
-    | BROWSER MODE
-    |--------------------------------------------------------------------------
-    */
+  function start() {
 
     if (
       !isWailsEnvironment()
     ) {
 
       console.log(
-        "[SERIAL] Browser mode."
-      )
-
-      console.log(
-        "[SERIAL] Wails serial disabled."
+        "[SERIAL] Browser mode - disabled"
       )
 
       return
     }
 
 
-    /*
-    |--------------------------------------------------------------------------
-    | WAILS MODE
-    |--------------------------------------------------------------------------
-    */
-
-    wailsEnabled =
-      true
+    if (
+      unsubscribe
+    ) {
+      return
+    }
 
 
     console.log(
@@ -104,35 +57,37 @@ export function useSerial(
     )
 
 
-    EventsOn(
-      "serial-command",
-      (
-        data: SerialCommand
-      ) => {
+    unsubscribe =
+      EventsOn(
+        "serial-command",
+        (
+          data: MixerCommand
+        ) => {
 
-        console.log(
-          "[SERIAL] COMMAND:",
-          data
-        )
-
-
-        callback(data)
-      }
-    )
-
-  })
+          console.log(
+            "[SERIAL] COMMAND:",
+            data
+          )
 
 
-  /*
-  |--------------------------------------------------------------------------
-  | UNMOUNT
-  |--------------------------------------------------------------------------
-  */
+          callback(
+            data
+          )
 
-  onUnmounted(() => {
+        }
+      )
+
+  }
+
+
+  // ============================================================
+  // STOP
+  // ============================================================
+
+  function stop() {
 
     if (
-      !wailsEnabled
+      !unsubscribe
     ) {
       return
     }
@@ -143,10 +98,35 @@ export function useSerial(
     )
 
 
-    EventsOff(
-      "serial-command"
-    )
+    unsubscribe()
 
-  })
+    unsubscribe =
+      null
+
+  }
+
+
+  // ============================================================
+  // LIFECYCLE
+  // ============================================================
+
+  onMounted(
+    start
+  )
+
+
+  onUnmounted(
+    stop
+  )
+
+
+  // ============================================================
+  // RETURN
+  // ============================================================
+
+  return {
+    start,
+    stop
+  }
 
 }

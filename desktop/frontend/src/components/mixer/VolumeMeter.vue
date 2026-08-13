@@ -1,9 +1,16 @@
 <script setup lang="ts">
 import { computed, ref } from "vue"
 
+type MeterColor =
+    | "cyan"
+    | "green"
+    | "purple"
+    | "yellow"
+    | "white"
+
 const props = defineProps<{
     volume: number
-    color?: "cyan" | "green" | "purple" | "yellow" | "white"
+    color?: MeterColor
 }>()
 
 const emit = defineEmits<{
@@ -12,45 +19,35 @@ const emit = defineEmits<{
 
 const isDragging = ref(false)
 
-const segmentCount = 28
+const SEGMENT_COUNT = 28
 
-const normalizedVolume = computed(() => {
-    return Math.max(
+const activeSegments = computed(() => {
+    const volume = Math.max(
         0,
         Math.min(
             100,
             Math.round(props.volume)
         )
     )
-})
 
-const activeSegments = computed(() => {
     return Math.round(
-        (normalizedVolume.value / 100) *
-        segmentCount
+        (volume / 100) * SEGMENT_COUNT
     )
 })
 
 const colorClass = computed(() => {
-    switch (props.color) {
-        case "green":
-            return "bg-emerald-400"
-
-        case "purple":
-            return "bg-violet-400"
-
-        case "yellow":
-            return "bg-yellow-400"
-
-        case "white":
-            return "bg-slate-200"
-
-        default:
-            return "bg-cyan-400"
+    const colors: Record<MeterColor, string> = {
+        cyan: "bg-cyan-400",
+        green: "bg-emerald-400",
+        purple: "bg-violet-400",
+        yellow: "bg-yellow-400",
+        white: "bg-slate-200"
     }
+
+    return colors[props.color ?? "cyan"]
 })
 
-function setVolumeFromPointer(
+function getVolumeFromPointer(
     event: PointerEvent
 ) {
     const element =
@@ -59,13 +56,16 @@ function setVolumeFromPointer(
     const rect =
         element.getBoundingClientRect()
 
-    const x =
-        event.clientX - rect.left
+    if (rect.width <= 0) {
+        return 0
+    }
 
     const percentage =
-        (x / rect.width) * 100
+        ((event.clientX - rect.left) /
+            rect.width) *
+        100
 
-    const volume = Math.round(
+    return Math.round(
         Math.max(
             0,
             Math.min(
@@ -74,10 +74,14 @@ function setVolumeFromPointer(
             )
         )
     )
+}
 
+function updateVolume(
+    event: PointerEvent
+) {
     emit(
         "set-volume",
-        volume
+        getVolumeFromPointer(event)
     )
 }
 
@@ -93,7 +97,7 @@ function handlePointerDown(
         event.pointerId
     )
 
-    setVolumeFromPointer(event)
+    updateVolume(event)
 }
 
 function handlePointerMove(
@@ -103,7 +107,7 @@ function handlePointerMove(
         return
     }
 
-    setVolumeFromPointer(event)
+    updateVolume(event)
 }
 
 function handlePointerUp(
@@ -131,102 +135,49 @@ function handlePointerCancel() {
 </script>
 
 <template>
-
-
     <div class="
-        relative
-  
-        w-full
-  
-        select-none
-  
-        touch-none
-      " :class="isDragging
-        ? 'cursor-grabbing'
-        : 'cursor-pointer'
+      relative
+      w-full
+      select-none
+      touch-none
+    " :class="isDragging
+            ? 'cursor-grabbing'
+            : 'cursor-pointer'
         " @pointerdown="handlePointerDown" @pointermove="handlePointerMove" @pointerup="handlePointerUp"
         @pointercancel="handlePointerCancel">
-
-
-
         <div class="
-          flex
-  
-  
-          h-5
-  
-  
-          w-full
-  
-  
-          items-center
-  
-  
-          gap-[1px]
-  
-  
-          overflow-hidden
-  
-  
-          rounded
-  
-  
-          border
-  
-          border-white/10
-  
-  
-          bg-black/30
-  
-  
-          p-[2px]
-  
-  
-  
-          sm:h-7
-  
-  
-  
-          md:h-12
-  
-  
-          md:gap-[3px]
-  
-          md:rounded-lg
-  
-          md:p-[3px]
-        ">
+        flex
+        h-5
+        w-full
+        items-center
+        gap-[1px]
+        overflow-hidden
+        rounded
+        border
+        border-white/10
+        bg-black/30
+        p-[2px]
 
+        sm:h-7
 
+        md:h-12
+        md:gap-[3px]
+        md:rounded-lg
+        md:p-[3px]
+      ">
+            <div v-for="index in SEGMENT_COUNT" :key="index" class="
+          h-full
+          min-w-0
+          flex-1
+          rounded-sm
+          transition-colors
+          duration-75
 
-            <div v-for="index in segmentCount" :key="index" class="
-            h-full
-  
-            min-w-0
-  
-            flex-1
-  
-  
-            rounded-sm
-  
-  
-            transition-colors
-  
-            duration-75
-  
-  
-            md:rounded-[3px]
-          " :class="index <= activeSegments
-            ? colorClass
-            : 'bg-white/10'
+          md:rounded-[3px]
+        " :class="index <= activeSegments
+                ? colorClass
+                : 'bg-white/10'
             " />
-
-
         </div>
-
-
-
     </div>
-
-
 </template>

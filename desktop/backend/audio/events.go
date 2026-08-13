@@ -2,8 +2,16 @@ package audio
 
 import "desktop/backend/models"
 
-// UpdateListener menerima perubahan audio
-// dari Audio Manager.
+// ============================================================
+// UPDATE LISTENER
+// ============================================================
+//
+// Menerima perubahan channel dari Audio Manager.
+//
+// Implementasinya digunakan oleh realtime bridge
+// untuk mengirim update audio ke WebSocket.
+//
+// ============================================================
 
 type UpdateListener interface {
 	OnChannelUpdate(

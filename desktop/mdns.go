@@ -9,25 +9,13 @@ import (
 
 var amenMDNSServer *mdns.Server
 
-// ============================================================
-// START MDNS
-// ============================================================
-
 func startMDNS() {
-
 	if amenMDNSServer != nil {
 		return
 	}
 
-	// ========================================================
-	// FIND CURRENT LAN IP
-	// ========================================================
-
-	ip, err :=
-		getLANIPv4()
-
+	ip, err := getLANIPv4()
 	if err != nil {
-
 		fmt.Println(
 			"[MDNS] IP ERROR:",
 			err,
@@ -36,43 +24,23 @@ func startMDNS() {
 		return
 	}
 
-	// ========================================================
-	// CREATE SERVICE
-	// ========================================================
-	//
-	// Host:
-	//
-	// amen-mixer.local
-	//
-	// UI:
-	//
-	// http://amen-mixer.local:5173
-	//
-	// WebSocket:
-	//
-	// ws://amen-mixer.local:8081/ws
-	//
-	// ========================================================
-
-	service, err :=
-		mdns.NewMDNSService(
-			"AMEN Mixer",
-			"_http._tcp",
-			"local.",
-			"amen-mixer.local.",
-			5173,
-			[]net.IP{
-				ip,
-			},
-			[]string{
-				"app=amen-mixer",
-				"ui-port=5173",
-				"ws-port=8081",
-			},
-		)
+	service, err := mdns.NewMDNSService(
+		"AMEN Mixer",
+		"_http._tcp",
+		"local.",
+		"amen-mixer.local.",
+		5173,
+		[]net.IP{
+			ip,
+		},
+		[]string{
+			"app=amen-mixer",
+			"ui-port=5173",
+			"ws-port=8081",
+		},
+	)
 
 	if err != nil {
-
 		fmt.Println(
 			"[MDNS] SERVICE ERROR:",
 			err,
@@ -81,19 +49,13 @@ func startMDNS() {
 		return
 	}
 
-	// ========================================================
-	// START MDNS SERVER
-	// ========================================================
-
-	server, err :=
-		mdns.NewServer(
-			&mdns.Config{
-				Zone: service,
-			},
-		)
+	server, err := mdns.NewServer(
+		&mdns.Config{
+			Zone: service,
+		},
+	)
 
 	if err != nil {
-
 		fmt.Println(
 			"[MDNS] SERVER ERROR:",
 			err,
@@ -102,12 +64,7 @@ func startMDNS() {
 		return
 	}
 
-	amenMDNSServer =
-		server
-
-	// ========================================================
-	// LOG
-	// ========================================================
+	amenMDNSServer = server
 
 	fmt.Println(
 		"[MDNS] =================================",
@@ -139,21 +96,12 @@ func startMDNS() {
 	)
 }
 
-// ============================================================
-// STOP MDNS
-// ============================================================
-
 func stopMDNS() {
-
 	if amenMDNSServer == nil {
 		return
 	}
 
-	err :=
-		amenMDNSServer.Shutdown()
-
-	if err != nil {
-
+	if err := amenMDNSServer.Shutdown(); err != nil {
 		fmt.Println(
 			"[MDNS] SHUTDOWN ERROR:",
 			err,
@@ -162,46 +110,24 @@ func stopMDNS() {
 		return
 	}
 
-	amenMDNSServer =
-		nil
+	amenMDNSServer = nil
 
 	fmt.Println(
 		"[MDNS] STOPPED",
 	)
 }
 
-// ============================================================
-// FIND LAN IPV4
-// ============================================================
-
-func getLANIPv4() (
-	net.IP,
-	error,
-) {
-
-	// ========================================================
-	// TRY DEFAULT ROUTE
-	// ========================================================
-
-	conn, err :=
-		net.Dial(
-			"udp",
-			"1.1.1.1:80",
-		)
-
-	if err == nil {
-
+func getLANIPv4() (net.IP, error) {
+	if conn, err := net.Dial(
+		"udp",
+		"1.1.1.1:80",
+	); err == nil {
 		defer conn.Close()
 
-		localAddr, ok :=
-			conn.LocalAddr().(*net.UDPAddr)
+		if localAddr, ok :=
+			conn.LocalAddr().(*net.UDPAddr); ok {
 
-		if ok {
-
-			ip :=
-				localAddr.IP.To4()
-
-			if ip != nil &&
+			if ip := localAddr.IP.To4(); ip != nil &&
 				!ip.IsLoopback() {
 
 				return ip, nil
@@ -209,15 +135,8 @@ func getLANIPv4() (
 		}
 	}
 
-	// ========================================================
-	// FALLBACK: NETWORK INTERFACES
-	// ========================================================
-
-	interfaces, err :=
-		net.Interfaces()
-
+	interfaces, err := net.Interfaces()
 	if err != nil {
-
 		return nil,
 			fmt.Errorf(
 				"get interfaces: %w",
@@ -226,58 +145,35 @@ func getLANIPv4() (
 	}
 
 	for _, iface := range interfaces {
-
-		// Interface harus aktif.
-		if iface.Flags&net.FlagUp == 0 {
+		if iface.Flags&net.FlagUp == 0 ||
+			iface.Flags&net.FlagLoopback != 0 {
 			continue
 		}
 
-		// Skip localhost.
-		if iface.Flags&net.FlagLoopback != 0 {
-			continue
-		}
-
-		addresses, err :=
-			iface.Addrs()
-
+		addresses, err := iface.Addrs()
 		if err != nil {
 			continue
 		}
 
 		for _, address := range addresses {
-
 			var ip net.IP
 
-			switch value :=
-				address.(type) {
-
+			switch value := address.(type) {
 			case *net.IPNet:
-
-				ip =
-					value.IP
+				ip = value.IP
 
 			case *net.IPAddr:
-
-				ip =
-					value.IP
+				ip = value.IP
 
 			default:
-
 				continue
 			}
 
-			ip =
-				ip.To4()
+			ip = ip.To4()
 
-			if ip == nil {
-				continue
-			}
-
-			if ip.IsLoopback() {
-				continue
-			}
-
-			if ip.IsLinkLocalUnicast() {
+			if ip == nil ||
+				ip.IsLoopback() ||
+				ip.IsLinkLocalUnicast() {
 				continue
 			}
 

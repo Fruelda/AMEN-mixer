@@ -8,14 +8,12 @@ import "desktop/backend/models"
 
 func (m *Manager) GetChannels() []models.Channel {
 	m.mutex.RLock()
-
 	defer m.mutex.RUnlock()
 
-	channels :=
-		make(
-			[]models.Channel,
-			len(m.channels),
-		)
+	channels := make(
+		[]models.Channel,
+		len(m.channels),
+	)
 
 	copy(
 		channels,
@@ -33,18 +31,14 @@ func (m *Manager) GetChannel(
 	id int,
 ) *models.Channel {
 	m.mutex.RLock()
-
 	defer m.mutex.RUnlock()
 
 	for _, channel := range m.channels {
-
 		if channel.ID != id {
 			continue
 		}
 
-		result :=
-			channel
-
+		result := channel
 		return &result
 	}
 

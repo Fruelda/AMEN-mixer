@@ -1,6 +1,7 @@
 <script setup lang="ts">
+import { computed } from "vue"
 
-import AppIcon from "./AppIcon.vue"
+import ChannelInfo from "./ChannelInfo.vue"
 import VolumeMeter from "./VolumeMeter.vue"
 import MuteButton from "./MuteButton.vue"
 
@@ -9,50 +10,39 @@ import type {
 } from "../../types/mixer"
 
 
-// ============================================================
-// PROPS
-// ============================================================
-
-const props =
-  defineProps<{
-    channel: MixerChannel
-  }>()
+type MeterColor =
+  | "cyan"
+  | "green"
+  | "purple"
+  | "yellow"
+  | "white"
 
 
-// ============================================================
-// EMIT
-// ============================================================
+const props = defineProps<{
+  channel: MixerChannel
+}>()
 
-const emit =
-  defineEmits<{
 
-    (
-      event: "set-volume",
-      id: number,
-      volume: number
-    ): void
+const emit = defineEmits<{
+  (
+    event: "set-volume",
+    id: number,
+    volume: number
+  ): void
 
-    (
-      event: "toggle-mute",
-      id: number
-    ): void
-
-  }>()
+  (
+    event: "toggle-mute",
+    id: number
+  ): void
+}>()
 
 
 // ============================================================
-// VOLUME COLOR
+// METER COLOR
 // ============================================================
 
-function getVolumeColor() {
-
-  switch (
-  props.channel.app
-  ) {
-
-    case "browser":
-      return "cyan"
-
+const meterColor = computed<MeterColor>(() => {
+  switch (props.channel.app) {
     case "spotify":
       return "green"
 
@@ -67,16 +57,33 @@ function getVolumeColor() {
 
     default:
       return "cyan"
-
   }
+})
 
+
+// ============================================================
+// EVENTS
+// ============================================================
+
+function setVolume(volume: number) {
+  emit(
+    "set-volume",
+    props.channel.id,
+    volume
+  )
 }
 
+
+function toggleMute() {
+  emit(
+    "toggle-mute",
+    props.channel.id
+  )
+}
 </script>
 
 
 <template>
-
   <div class="
       flex
       w-full
@@ -106,143 +113,32 @@ function getVolumeColor() {
         : ''
       ">
 
-    <!-- ==================================================== -->
-    <!-- APP INFO -->
-    <!-- ==================================================== -->
+    <!-- CHANNEL INFO -->
 
-    <div class="
-        flex
-        w-[145px]
-        shrink-0
-        items-center
-
-        gap-2
-
-        sm:w-[190px]
-        sm:gap-3
-
-        md:w-[230px]
-      ">
-
-      <!-- ICON -->
-
-      <div class="
-          flex
-          h-9
-          w-9
-          shrink-0
-          items-center
-          justify-center
-
-          sm:h-10
-          sm:w-10
-
-          md:h-11
-          md:w-11
-        ">
-
-        <AppIcon :channel="channel" />
-
-      </div>
+    <ChannelInfo :channel="channel" />
 
 
-      <!-- NAME -->
-
-      <div class="
-          min-w-0
-          flex-1
-        ">
-
-        <div class="
-            truncate
-
-            text-sm
-            font-bold
-
-            sm:text-base
-
-            md:text-xl
-          " :class="channel.muted
-              ? 'text-red-300'
-              : 'text-white'
-            ">
-
-          {{ channel.name }}
-
-        </div>
-
-
-        <!-- STATUS -->
-
-        <div class="
-            text-[7px]
-
-            font-bold
-            uppercase
-
-            tracking-[0.12em]
-
-            sm:text-[8px]
-
-            md:text-[9px]
-          " :class="!channel.connected
-              ? 'text-slate-500'
-              : channel.muted
-                ? 'text-red-400'
-                : 'text-emerald-400'
-            ">
-
-          {{
-            !channel.connected
-              ? "Offline"
-              : channel.muted
-                ? "Muted"
-                : "Connected"
-          }}
-
-        </div>
-
-      </div>
-
-    </div>
-
-
-    <!-- ==================================================== -->
-    <!-- VOLUME METER -->
-    <!-- ==================================================== -->
+    <!-- VOLUME -->
 
     <div class="
         min-w-0
         flex-1
-
         transition-opacity
       " :class="channel.muted
           ? 'opacity-45'
           : 'opacity-100'
         ">
-
-      <VolumeMeter :volume="channel.volume" :color="getVolumeColor()" @set-volume="
-        volume =>
-          emit(
-            'set-volume',
-            channel.id,
-            volume
-          )
-      " />
-
+      <VolumeMeter :volume="channel.volume" :color="meterColor" @set-volume="setVolume" />
     </div>
 
 
-    <!-- ==================================================== -->
     <!-- VALUE -->
-    <!-- ==================================================== -->
 
     <div class="
         w-10
         shrink-0
 
         text-right
-
         text-sm
         font-bold
 
@@ -257,23 +153,13 @@ function getVolumeColor() {
           ? 'text-red-300'
           : 'text-white'
         ">
-
       {{ Math.round(channel.volume) }}%
-
     </div>
 
 
-    <!-- ==================================================== -->
-    <!-- MUTE BUTTON -->
-    <!-- ==================================================== -->
+    <!-- MUTE -->
 
-    <MuteButton :muted="channel.muted" @toggle="
-      emit(
-        'toggle-mute',
-        channel.id
-      )
-      " />
+    <MuteButton :muted="channel.muted" @toggle="toggleMute" />
 
   </div>
-
 </template>

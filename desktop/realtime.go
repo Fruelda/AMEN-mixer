@@ -27,20 +27,15 @@ type WSClient struct {
 // ============================================================
 
 type RealtimeServer struct {
-	clients map[*WSClient]bool
-
+	clients  map[*WSClient]bool
 	channels map[int]protocol.Channel
-
-	mu sync.Mutex
+	mu       sync.Mutex
 
 	// Handler untuk update yang datang dari
 	// HP / browser / client remote.
 	//
-	// Handler ini nanti dihubungkan ke audio.Manager
-	// melalui app.go.
-	onChannelUpdate func(
-		protocol.ChannelUpdate,
-	) error
+	// Handler ini dihubungkan ke audio.Manager.
+	onChannelUpdate func(protocol.ChannelUpdate) error
 }
 
 // ============================================================
@@ -48,9 +43,7 @@ type RealtimeServer struct {
 // ============================================================
 
 var upgrader = websocket.Upgrader{
-	CheckOrigin: func(
-		r *http.Request,
-	) bool {
+	CheckOrigin: func(r *http.Request) bool {
 		return true
 	},
 }
@@ -60,15 +53,9 @@ var upgrader = websocket.Upgrader{
 // ============================================================
 
 func NewRealtimeServer() *RealtimeServer {
-
 	return &RealtimeServer{
-		clients: make(
-			map[*WSClient]bool,
-		),
-
-		channels: make(
-			map[int]protocol.Channel,
-		),
+		clients:  make(map[*WSClient]bool),
+		channels: make(map[int]protocol.Channel),
 	}
 }
 
@@ -77,11 +64,7 @@ func NewRealtimeServer() *RealtimeServer {
 // ============================================================
 
 func (s *RealtimeServer) SetChannelUpdateHandler(
-	handler func(
-		protocol.ChannelUpdate,
-	) error,
+	handler func(protocol.ChannelUpdate) error,
 ) {
-
-	s.onChannelUpdate =
-		handler
+	s.onChannelUpdate = handler
 }

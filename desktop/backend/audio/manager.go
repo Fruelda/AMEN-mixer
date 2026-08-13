@@ -6,15 +6,21 @@ import (
 	"desktop/backend/models"
 )
 
+// ============================================================
+// MANAGER
+// ============================================================
+
 type Manager struct {
 	mutex sync.RWMutex
 
 	channels []models.Channel
-
-	windows *WindowsAudio
-
+	windows  *WindowsAudio
 	listener UpdateListener
 }
+
+// ============================================================
+// CREATE MANAGER
+// ============================================================
 
 func New() *Manager {
 	return &Manager{
@@ -30,7 +36,6 @@ func New() *Manager {
 				Connected: true,
 				Selected:  true,
 			},
-
 			{
 				ID:        2,
 				Name:      "Browser",
@@ -39,7 +44,6 @@ func New() *Manager {
 				Muted:     false,
 				Connected: true,
 			},
-
 			{
 				ID:        3,
 				Name:      "Spotify",
@@ -48,7 +52,6 @@ func New() *Manager {
 				Muted:     false,
 				Connected: true,
 			},
-
 			{
 				ID:        4,
 				Name:      "Discord",
@@ -57,7 +60,6 @@ func New() *Manager {
 				Muted:     false,
 				Connected: true,
 			},
-
 			{
 				ID:        5,
 				Name:      "Valeton",
@@ -70,13 +72,14 @@ func New() *Manager {
 	}
 }
 
+// ============================================================
+// SET UPDATE LISTENER
+// ============================================================
+
 func (m *Manager) SetListener(
 	listener UpdateListener,
 ) {
 	m.mutex.Lock()
-
-	m.listener =
-		listener
-
+	m.listener = listener
 	m.mutex.Unlock()
 }

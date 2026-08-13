@@ -9,14 +9,25 @@ import (
 	"go.bug.st/serial"
 )
 
+// ============================================================
+// MANAGER
+// ============================================================
+
 type Manager struct {
 	port serial.Port
 
-	OnCommand func(*protocol.Command)
+	OnCommand func(
+		*protocol.Command,
+	)
 }
 
-func New(portName string) (*Manager, error) {
+// ============================================================
+// CREATE MANAGER
+// ============================================================
 
+func New(
+	portName string,
+) (*Manager, error) {
 	mode := &serial.Mode{
 		BaudRate: 115200,
 		DataBits: 8,
@@ -24,7 +35,11 @@ func New(portName string) (*Manager, error) {
 		StopBits: serial.OneStopBit,
 	}
 
-	port, err := serial.Open(portName, mode)
+	port, err := serial.Open(
+		portName,
+		mode,
+	)
+
 	if err != nil {
 		return nil, err
 	}
@@ -34,29 +49,52 @@ func New(portName string) (*Manager, error) {
 	}, nil
 }
 
+// ============================================================
+// START SERIAL
+// ============================================================
+
 func (m *Manager) Start() {
+	fmt.Println("[SERIAL] Started")
 
-	fmt.Println("Serial Started...")
-
-	reader := bufio.NewReader(m.port)
+	reader := bufio.NewReader(
+		m.port,
+	)
 
 	for {
-
 		line, err := reader.ReadString('\n')
+
 		if err != nil {
-			fmt.Println("READ ERROR:", err)
+			fmt.Println(
+				"[SERIAL] READ ERROR:",
+				err,
+			)
+
 			continue
 		}
 
-		fmt.Printf("RAW: %q\n", line)
+		// ====================================================
+		// PARSE COMMAND
+		// ====================================================
 
 		cmd, err := Parse(line)
+
 		if err != nil {
-			fmt.Println("PARSE ERROR:", err)
+			fmt.Println(
+				"[SERIAL] PARSE ERROR:",
+				err,
+			)
+
 			continue
 		}
 
-		fmt.Printf("CMD: %+v\n", cmd)
+		fmt.Printf(
+			"[SERIAL] CMD: %+v\n",
+			cmd,
+		)
+
+		// ====================================================
+		// DISPATCH COMMAND
+		// ====================================================
 
 		if m.OnCommand != nil {
 			m.OnCommand(cmd)
@@ -64,9 +102,14 @@ func (m *Manager) Start() {
 	}
 }
 
-func (m *Manager) Close() {
+// ============================================================
+// CLOSE SERIAL
+// ============================================================
 
-	if m.port != nil {
-		m.port.Close()
+func (m *Manager) Close() {
+	if m.port == nil {
+		return
 	}
+
+	_ = m.port.Close()
 }

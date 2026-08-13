@@ -5,7 +5,7 @@ package protocol
 | REALTIME MESSAGE
 |--------------------------------------------------------------------------
 |
-| Format utama WebSocket
+| Format utama WebSocket.
 |
 |--------------------------------------------------------------------------
 */
@@ -13,31 +13,21 @@ package protocol
 type MessageType string
 
 const (
-	MessageState MessageType = "STATE"
-
+	MessageState         MessageType = "STATE"
 	MessageChannelUpdate MessageType = "CHANNEL_UPDATE"
-
-	MessageCommand MessageType = "COMMAND"
-
-	MessageDeviceStatus MessageType = "DEVICE_STATUS"
-
-	// Connected devices list
-	MessageDevices MessageType = "DEVICES"
+	MessageCommand       MessageType = "COMMAND"
+	MessageDeviceStatus  MessageType = "DEVICE_STATUS"
+	MessageDevices       MessageType = "DEVICES"
 )
 
 type RealtimeMessage struct {
 	Type MessageType `json:"type"`
 
-	Channels []Channel `json:"channels,omitempty"`
-
-	Channel *ChannelUpdate `json:"channel,omitempty"`
-
-	Command *MixerCommand `json:"command,omitempty"`
-
-	Connected *bool `json:"connected,omitempty"`
-
-	// Connected devices
-	Devices []DeviceInfo `json:"devices,omitempty"`
+	Channels  []Channel      `json:"channels,omitempty"`
+	Channel   *ChannelUpdate `json:"channel,omitempty"`
+	Command   *MixerCommand  `json:"command,omitempty"`
+	Connected *bool          `json:"connected,omitempty"`
+	Devices   []DeviceInfo   `json:"devices,omitempty"`
 }
 
 /*
@@ -48,9 +38,7 @@ type RealtimeMessage struct {
 
 type DeviceRegister struct {
 	Type string `json:"type"`
-
-	ID string `json:"id"`
-
+	ID   string `json:"id"`
 	Name string `json:"name"`
 }
 
@@ -65,13 +53,10 @@ type DeviceRegister struct {
 */
 
 type DeviceInfo struct {
-	ID string `json:"id"`
-
-	Name string `json:"name"`
-
+	ID         string `json:"id"`
+	Name       string `json:"name"`
 	ClientType string `json:"clientType"`
-
-	Connected bool `json:"connected"`
+	Connected  bool   `json:"connected"`
 }
 
 /*
@@ -81,19 +66,13 @@ type DeviceInfo struct {
 */
 
 type Channel struct {
-	ID int `json:"id"`
-
-	Name string `json:"name"`
-
-	App string `json:"app"`
-
-	Volume int `json:"volume"`
-
-	Muted bool `json:"muted"`
-
-	Connected bool `json:"connected"`
-
-	Selected bool `json:"selected"`
+	ID        int    `json:"id"`
+	Name      string `json:"name"`
+	App       string `json:"app"`
+	Volume    int    `json:"volume"`
+	Muted     bool   `json:"muted"`
+	Connected bool   `json:"connected"`
+	Selected  bool   `json:"selected"`
 }
 
 /*
@@ -103,9 +82,7 @@ type Channel struct {
 */
 
 type ChannelUpdate struct {
-	ID int `json:"id"`
-
-	Volume *int `json:"volume,omitempty"`
-
-	Muted *bool `json:"muted,omitempty"`
+	ID     int   `json:"id"`
+	Volume *int  `json:"volume,omitempty"`
+	Muted  *bool `json:"muted,omitempty"`
 }

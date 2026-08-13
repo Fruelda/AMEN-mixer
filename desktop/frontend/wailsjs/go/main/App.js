@@ -6,10 +6,6 @@ export function GetChannels() {
   return window['go']['main']['App']['GetChannels']();
 }
 
-export function Greet(arg1) {
-  return window['go']['main']['App']['Greet'](arg1);
-}
-
 export function SetMuted(arg1, arg2) {
   return window['go']['main']['App']['SetMuted'](arg1, arg2);
 }
