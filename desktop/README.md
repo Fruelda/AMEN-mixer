@@ -84,3 +84,24 @@ See the main documentation:
 * [Project README](../README.md)
 * [Architecture](../docs/architecture.md)
 * [Development Guide](../docs/development.md)
+
+# cara run apliaski/ instal## Build Android APK (Capacitor)
+
+Jalankan dari root frontend:
+
+```bash
+cd desktop/frontend && \
+rm -rf dist node_modules/.vite && \
+npm run build && \
+npx cap sync && \
+cd android && \
+./gradlew clean && \
+./gradlew assembleDebug && \
+adb install -r app/build/outputs/apk/debug/app-debug.apk
+```
+
+APK hasil build berada di:
+
+```
+desktop/frontend/android/app/build/outputs/apk/debug/app-debug.apk
+```

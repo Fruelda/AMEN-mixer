@@ -87,18 +87,15 @@ function toggleMute() {
   <div class="
       flex
       w-full
+      min-w-0
       items-center
-
       gap-2
-
+      overflow-hidden
       border-b
       border-white/10
-
       px-2
-      py-1.5
-
+      py-1
       transition-colors
-
       last:border-b-0
 
       sm:gap-3
@@ -108,40 +105,31 @@ function toggleMute() {
       md:gap-5
       md:px-6
       md:py-3
-    " :class="channel.muted
-        ? 'bg-red-500/[0.05]'
-        : ''
-      ">
+    " :class="channel.muted ? 'bg-red-500/[0.05]' : ''">
 
     <!-- CHANNEL INFO -->
-
-    <ChannelInfo :channel="channel" />
+    <div class="shrink-0">
+      <ChannelInfo :channel="channel" />
+    </div>
 
 
     <!-- VOLUME -->
-
     <div class="
         min-w-0
         flex-1
-        transition-opacity
-      " :class="channel.muted
-          ? 'opacity-45'
-          : 'opacity-100'
-        ">
+        overflow-hidden
+      " :class="channel.muted ? 'opacity-45' : 'opacity-100'">
       <VolumeMeter :volume="channel.volume" :color="meterColor" @set-volume="setVolume" />
     </div>
 
 
     <!-- VALUE -->
-
     <div class="
-        w-10
+        w-8
         shrink-0
-
         text-right
-        text-sm
+        text-xs
         font-bold
-
         tabular-nums
 
         sm:w-12
@@ -150,15 +138,14 @@ function toggleMute() {
         md:w-16
         md:text-xl
       " :class="channel.muted
-          ? 'text-red-300'
-          : 'text-white'
+        ? 'text-red-300'
+        : 'text-white'
         ">
       {{ Math.round(channel.volume) }}%
     </div>
 
 
     <!-- MUTE -->
-
     <MuteButton :muted="channel.muted" @toggle="toggleMute" />
 
   </div>

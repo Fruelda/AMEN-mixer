@@ -20,16 +20,21 @@ function goBack() {
 </script>
 
 <template>
-  <main class="relative min-h-screen w-full bg-cover bg-center bg-fixed px-2 py-2 sm:px-6 sm:py-6 lg:px-10" :style="{
-    backgroundImage: `
-        linear-gradient(
-          rgba(2, 8, 13, 0.55),
-          rgba(2, 8, 13, 0.75)
-        ),
-        url('/amen-bg.png')
-      `,
-  }">
-    <div class="relative z-10 mx-auto w-full max-w-[1800px]">
+  <main class="
+    relative
+    min-h-dvh
+    w-full
+    overflow-y-auto
+    bg-cover
+    bg-center
+    px-2
+    py-2
+    pb-20
+    sm:px-6
+    sm:py-6
+    lg:px-10
+  ">
+    <div class="relative z-10 mx-auto h-auto w-full max-w-[1800px]">
       <DevicesHeader :device-count="deviceCount" @back="goBack" />
 
       <section
