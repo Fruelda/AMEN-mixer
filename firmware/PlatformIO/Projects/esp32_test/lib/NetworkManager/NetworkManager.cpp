@@ -12,6 +12,14 @@ WebSocketsClient webSocket;
 
 bool wsConnected = false;
 
+unsigned long lastWiFiCheck = 0;
+
+unsigned long lastWsCheck = 0;
+
+const unsigned long wifiRetryInterval = 10000;
+
+const unsigned long wsRetryInterval = 5000;
+
 // =================================================
 // BEGIN
 // =================================================
@@ -24,13 +32,16 @@ void NetworkManager::begin()
     Serial.println(
         "=== AMEN NETWORK START ===");
 
+    WiFi.mode(
+        WIFI_STA);
+
     connectWiFi();
 
     connectWebSocket();
 }
 
 // =================================================
-// WIFI
+// WIFI CONNECT
 // =================================================
 
 void NetworkManager::connectWiFi()
@@ -46,8 +57,9 @@ void NetworkManager::connectWiFi()
     Serial.println(
         "Connecting WiFi...");
 
-    WiFi.mode(
-        WIFI_STA);
+    WiFi.disconnect();
+
+    delay(100);
 
     WiFi.begin(
 
@@ -57,12 +69,13 @@ void NetworkManager::connectWiFi()
 
     );
 
+    unsigned long start =
+        millis();
+
     while (
-
         WiFi.status() !=
-        WL_CONNECTED
-
-    )
+            WL_CONNECTED &&
+        millis() - start < 15000)
     {
 
         delay(500);
@@ -73,14 +86,26 @@ void NetworkManager::connectWiFi()
 
     Serial.println();
 
-    Serial.println(
-        "WiFi Connected");
+    if (
+        WiFi.status() ==
+        WL_CONNECTED)
+    {
 
-    Serial.print(
-        "IP : ");
+        Serial.println(
+            "WiFi Connected");
 
-    Serial.println(
-        WiFi.localIP());
+        Serial.print(
+            "IP : ");
+
+        Serial.println(
+            WiFi.localIP());
+    }
+    else
+    {
+
+        Serial.println(
+            "WiFi Failed");
+    }
 }
 
 // =================================================
@@ -89,6 +114,13 @@ void NetworkManager::connectWiFi()
 
 void NetworkManager::connectWebSocket()
 {
+
+    if (
+        WiFi.status() !=
+        WL_CONNECTED)
+    {
+        return;
+    }
 
     Serial.println(
         "Connecting AMEN Server...");
@@ -141,18 +173,11 @@ void NetworkManager::connectWebSocket()
                 String output;
 
                 serializeJson(
-
                     doc,
-
-                    output
-
-                );
+                    output);
 
                 webSocket.sendTXT(
-
-                    output
-
-                );
+                    output);
 
                 break;
             }
@@ -165,10 +190,7 @@ void NetworkManager::connectWebSocket()
                     "SERVER: ");
 
                 Serial.println(
-
-                    (char *)payload
-
-                );
+                    (char *)payload);
 
                 break;
             }
@@ -204,10 +226,7 @@ void NetworkManager::connectWebSocket()
     );
 
     webSocket.setReconnectInterval(
-
-        5000
-
-    );
+        5000);
 }
 
 // =================================================
@@ -217,11 +236,59 @@ void NetworkManager::connectWebSocket()
 void NetworkManager::loop()
 {
 
+    unsigned long now =
+        millis();
+
+    // ==========================
+    // WIFI WATCHDOG
+    // ==========================
+
+    if (
+        WiFi.status() !=
+        WL_CONNECTED)
+    {
+
+        if (
+            now -
+                lastWiFiCheck >
+            wifiRetryInterval)
+        {
+
+            lastWiFiCheck =
+                now;
+
+            connectWiFi();
+        }
+    }
+
+    // ==========================
+    // WEBSOCKET WATCHDOG
+    // ==========================
+
+    if (
+        WiFi.status() ==
+        WL_CONNECTED)
+    {
+
+        if (
+            !wsConnected &&
+            now -
+                    lastWsCheck >
+                wsRetryInterval)
+        {
+
+            lastWsCheck =
+                now;
+
+            connectWebSocket();
+        }
+    }
+
     webSocket.loop();
 }
 
 // =================================================
-// SEND
+// SEND ENCODER
 // =================================================
 
 void NetworkManager::sendEncoder(
@@ -271,6 +338,10 @@ void NetworkManager::sendEncoder(
 
     );
 }
+
+// =================================================
+// STATUS
+// =================================================
 
 bool NetworkManager::isConnected()
 {

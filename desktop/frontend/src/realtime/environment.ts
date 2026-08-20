@@ -26,7 +26,7 @@ export function getRealtimeURL(): string {
     }
 
     if (isWailsEnvironment()) {
-        return "ws://127.0.0.1:8081/ws"
+        return "ws://192.168.1.44:8081/ws"
     }
 
     return `ws://${window.location.hostname}:8081/ws`

@@ -12,7 +12,8 @@ import (
 func (a *App) startSerial() {
 	manager, err :=
 		serial.New(
-			"/dev/cu.usbserial-1420",
+			// "/dev/cu.usbserial-1420", wifi
+			"/dev/cu.usbserial-A5069RR4", // usb
 		)
 
 	if err != nil {

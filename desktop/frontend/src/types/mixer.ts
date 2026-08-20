@@ -107,14 +107,38 @@ export interface DeviceStatusMessage {
   connected: boolean
 }
 
+// ============================================================
+// ESP32 MIXER COMMAND MESSAGE
+// ============================================================
+
+export interface ESP32MixerCommandMessage {
+
+  type: "mixer.command"
+
+  device: string
+
+  channel: number
+
+  value: number
+
+  seource?: string
+
+}
 
 // ============================================================
 // REALTIME MESSAGE
 // ============================================================
 
 export type RealtimeMessage =
+
   | StateMessage
+
   | ChannelUpdateMessage
+
   | CommandMessage
+
+  | ESP32MixerCommandMessage
+
   | DevicesMessage
+
   | DeviceStatusMessage

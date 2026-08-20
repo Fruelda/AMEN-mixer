@@ -31,10 +31,7 @@ type RealtimeServer struct {
 	channels map[int]protocol.Channel
 	mu       sync.Mutex
 
-	// Handler untuk update yang datang dari
-	// HP / browser / client remote.
-	//
-	// Handler ini dihubungkan ke audio.Manager.
+	// Handler update dari HP / browser
 	onChannelUpdate func(protocol.ChannelUpdate) error
 }
 

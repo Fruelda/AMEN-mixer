@@ -1,5 +1,7 @@
 #include <Arduino.h>
 
+#include <ArduinoOTA.h>
+
 #include "NetworkManager.h"
 #include "EncoderManager.h"
 #include "AudioManager.h"
@@ -10,34 +12,102 @@ EncoderManager encoder;
 
 AudioManager audio;
 
+// ============================================================
+// SETUP
+// ============================================================
+
 void setup()
 {
 
-  Serial.begin(
-      115200);
+    Serial.begin(
+        115200);
 
-  delay(1000);
+    delay(
+        1000);
 
-  Serial.println();
+    Serial.println();
 
-  Serial.println(
-      "=== AMEN START ===");
+    Serial.println(
+        "=== AMEN START ===");
 
-  network.begin();
+    // ==========================
+    // NETWORK
+    // ==========================
 
-  encoder.begin();
+    network.begin();
 
-  audio.begin();
+    // ==========================
+    // OTA
+    // ==========================
 
-  Serial.println(
-      "BOOT");
+    ArduinoOTA.setHostname(
+        "amen-mixer-01");
+
+    // ArduinoOTA.setPassword(
+    //     "amen123");
+
+    ArduinoOTA.onStart(
+        []()
+        {
+            Serial.println(
+                "OTA START");
+        });
+
+    ArduinoOTA.onEnd(
+        []()
+        {
+            Serial.println(
+                "\nOTA END");
+        });
+
+    ArduinoOTA.onProgress(
+        [](unsigned int progress,
+           unsigned int total)
+        {
+            Serial.printf(
+                "OTA Progress: %u%%\r",
+                (progress * 100) / total);
+        });
+
+    ArduinoOTA.onError(
+        [](ota_error_t error)
+        {
+            Serial.printf(
+                "OTA Error[%u]\n",
+                error);
+        });
+
+    ArduinoOTA.begin();
+
+    Serial.println(
+        "OTA READY");
+
+    // ==========================
+    // HARDWARE
+    // ==========================
+
+    encoder.begin();
+
+    audio.begin();
+
+    Serial.println(
+        "BOOT");
 }
+
+// ============================================================
+// LOOP
+// ============================================================
 
 void loop()
 {
 
-  network.loop();
+    // WebSocket
+    network.loop();
 
-  encoder.update(
-      audio);
+    // OTA handler
+    ArduinoOTA.handle();
+
+    // Encoder
+    encoder.update(
+        audio);
 }

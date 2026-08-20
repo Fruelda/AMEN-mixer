@@ -119,7 +119,7 @@ function toggleMute() {
         flex-1
         overflow-hidden
       " :class="channel.muted ? 'opacity-45' : 'opacity-100'">
-      <VolumeMeter :volume="channel.volume" :color="meterColor" @set-volume="setVolume" />
+      <VolumeMeter :volume="channel.volume" :color="meterColor" :muted="channel.muted" @set-volume="setVolume" />
     </div>
 
 

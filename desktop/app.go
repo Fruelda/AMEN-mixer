@@ -54,13 +54,14 @@ func (a *App) startup(
 	startMDNS()
 
 	// ========================================================
-	// ESP32 SERIAL
+	// ESP32 Wifi
 	// ========================================================
 
-	a.startSerial()
+	// a.startSerial()
+	// a.startESP32()
 
 	fmt.Println("===================================")
-	fmt.Println("AMEN MIXER READY")
+	fmt.Println("АМИНЬ READY")
 	fmt.Println("===================================")
 }
 

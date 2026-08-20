@@ -7,6 +7,7 @@ import {
 
 export function createCommands() {
 
+
     return {
 
 
@@ -17,10 +18,11 @@ export function createCommands() {
 
             if (
                 !isMixerWailsEnvironment()
-            )
+            ) {
 
                 return
 
+            }
 
 
 
@@ -32,11 +34,18 @@ export function createCommands() {
 
 
 
-            if (!channel)
+            if (!channel) {
+
                 return
 
+            }
 
 
+
+
+            // ====================================================
+            // ENCODER
+            // ====================================================
 
             if (
                 command.type === "ENC"
@@ -48,8 +57,10 @@ export function createCommands() {
                     channel.id,
 
                     normalizeVolume(
+
                         channel.volume +
                         command.value
+
                     ),
 
                     false
@@ -64,6 +75,9 @@ export function createCommands() {
 
 
 
+            // ====================================================
+            // BUTTON
+            // ====================================================
 
             if (
                 command.type === "BTN"
@@ -77,11 +91,13 @@ export function createCommands() {
                 )
 
 
+                return
+
             }
 
 
-
         },
+
 
 
 
@@ -93,16 +109,18 @@ export function createCommands() {
 
 
             void this.setVolume(
-                id,
-                volume,
-                false
-            )
 
+                id,
+
+                volume,
+
+                false
+
+            )
 
         }
 
 
     }
-
 
 }

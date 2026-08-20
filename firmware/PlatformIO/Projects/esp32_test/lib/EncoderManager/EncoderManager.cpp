@@ -6,6 +6,18 @@
 
 extern NetworkManager network;
 
+// ============================================================
+// ENCODER DEBOUNCE
+// ============================================================
+
+unsigned long lastEncoderTime[7] = {0};
+
+const unsigned long encoderDebounceDelay = 8;
+
+// ============================================================
+// BEGIN
+// ============================================================
+
 void EncoderManager::begin()
 {
 
@@ -13,70 +25,140 @@ void EncoderManager::begin()
     // Encoder 1
     // ==========================
 
-    pinMode(EC1_CLK, INPUT_PULLUP);
-    pinMode(EC1_DT, INPUT_PULLUP);
-    pinMode(EC1_SW, INPUT_PULLUP);
+    pinMode(
+        EC1_CLK,
+        INPUT_PULLUP);
+
+    pinMode(
+        EC1_DT,
+        INPUT_PULLUP);
+
+    pinMode(
+        EC1_SW,
+        INPUT_PULLUP);
 
     // ==========================
     // Encoder 2
     // ==========================
 
-    pinMode(EC2_CLK, INPUT_PULLUP);
-    pinMode(EC2_DT, INPUT_PULLUP);
-    pinMode(EC2_SW, INPUT_PULLUP);
+    pinMode(
+        EC2_CLK,
+        INPUT_PULLUP);
+
+    pinMode(
+        EC2_DT,
+        INPUT_PULLUP);
+
+    pinMode(
+        EC2_SW,
+        INPUT_PULLUP);
 
     // ==========================
     // Encoder 3
     // ==========================
 
-    pinMode(EC3_CLK, INPUT_PULLUP);
-    pinMode(EC3_DT, INPUT_PULLUP);
-    pinMode(EC3_SW, INPUT_PULLUP);
+    pinMode(
+        EC3_CLK,
+        INPUT_PULLUP);
+
+    pinMode(
+        EC3_DT,
+        INPUT_PULLUP);
+
+    pinMode(
+        EC3_SW,
+        INPUT_PULLUP);
 
     // ==========================
     // Encoder 4
     // ==========================
 
-    pinMode(EC4_CLK, INPUT_PULLUP);
-    pinMode(EC4_DT, INPUT_PULLUP);
-    pinMode(EC4_SW, INPUT_PULLUP);
+    pinMode(
+        EC4_CLK,
+        INPUT_PULLUP);
+
+    pinMode(
+        EC4_DT,
+        INPUT_PULLUP);
+
+    pinMode(
+        EC4_SW,
+        INPUT_PULLUP);
 
     // ==========================
     // Encoder 5
     // ==========================
 
-    pinMode(EC5_CLK, INPUT_PULLUP);
-    pinMode(EC5_DT, INPUT_PULLUP);
-    pinMode(EC5_SW, INPUT_PULLUP);
+    pinMode(
+        EC5_CLK,
+        INPUT_PULLUP);
+
+    pinMode(
+        EC5_DT,
+        INPUT_PULLUP);
+
+    pinMode(
+        EC5_SW,
+        INPUT_PULLUP);
 
     // ==========================
     // Encoder 6
     // ==========================
 
-    pinMode(EC6_CLK, INPUT_PULLUP);
-    pinMode(EC6_DT, INPUT_PULLUP);
-    pinMode(EC6_SW, INPUT_PULLUP);
+    pinMode(
+        EC6_CLK,
+        INPUT_PULLUP);
 
-    // Simpan posisi awal
+    pinMode(
+        EC6_DT,
+        INPUT_PULLUP);
 
-    lastCLK1 = digitalRead(EC1_CLK);
-    lastCLK2 = digitalRead(EC2_CLK);
-    lastCLK3 = digitalRead(EC3_CLK);
-    lastCLK4 = digitalRead(EC4_CLK);
-    lastCLK5 = digitalRead(EC5_CLK);
-    lastCLK6 = digitalRead(EC6_CLK);
+    pinMode(
+        EC6_SW,
+        INPUT_PULLUP);
+
+    // Simpan posisi awal encoder
+
+    lastCLK1 =
+        digitalRead(
+            EC1_CLK);
+
+    lastCLK2 =
+        digitalRead(
+            EC2_CLK);
+
+    lastCLK3 =
+        digitalRead(
+            EC3_CLK);
+
+    lastCLK4 =
+        digitalRead(
+            EC4_CLK);
+
+    lastCLK5 =
+        digitalRead(
+            EC5_CLK);
+
+    lastCLK6 =
+        digitalRead(
+            EC6_CLK);
 
     Serial.println(
         "Encoder Manager Ready");
 }
 
-void EncoderManager::update(AudioManager &audio)
+// ============================================================
+// UPDATE
+// ============================================================
+
+void EncoderManager::update(
+    AudioManager &audio)
 {
 
     (void)audio;
 
     // ==========================
-    // Rotary Encoder
+    // ROTARY
     // ==========================
 
     readEncoder(
@@ -116,13 +198,18 @@ void EncoderManager::update(AudioManager &audio)
         6);
 
     // ==========================
-    // Button
+    // BUTTON
     // ==========================
 
     readButton(
         EC1_SW,
         lastButton1,
         1);
+
+    readButton(
+        EC2_SW,
+        lastButton2,
+        2);
 
     readButton(
         EC3_SW,
@@ -145,6 +232,10 @@ void EncoderManager::update(AudioManager &audio)
         6);
 }
 
+// ============================================================
+// ROTARY ENCODER
+// ============================================================
+
 void EncoderManager::readEncoder(
 
     int clkPin,
@@ -159,10 +250,30 @@ void EncoderManager::readEncoder(
 {
 
     int clk =
-        digitalRead(clkPin);
+        digitalRead(
+            clkPin);
 
-    if (clk != lastCLK)
+    if (
+        clk != lastCLK)
     {
+
+        unsigned long now =
+            millis();
+
+        if (
+            now -
+                lastEncoderTime[encoderID] <
+            encoderDebounceDelay)
+        {
+
+            lastCLK =
+                clk;
+
+            return;
+        }
+
+        lastEncoderTime[encoderID] =
+            now;
 
         int direction;
 
@@ -179,31 +290,23 @@ void EncoderManager::readEncoder(
             direction = -1;
         }
 
-        // Serial debug
-
         Serial.printf(
-
             "ENC,%d,%d\n",
-
             encoderID,
-
-            direction
-
-        );
-
-        // Kirim ke AMEN Windows
+            direction);
 
         network.sendEncoder(
-
             encoderID,
+            direction);
 
-            direction
-
-        );
-
-        lastCLK = clk;
+        lastCLK =
+            clk;
     }
 }
+
+// ============================================================
+// BUTTON
+// ============================================================
 
 void EncoderManager::readButton(
 
@@ -217,10 +320,12 @@ void EncoderManager::readButton(
 {
 
     bool current =
-        digitalRead(swPin) ==
+        digitalRead(
+            swPin) ==
         LOW;
 
-    if (current != lastButton)
+    if (
+        current != lastButton)
     {
 
         if (
@@ -232,24 +337,17 @@ void EncoderManager::readButton(
             lastDebounceTime =
                 millis();
 
-            if (current)
+            if (
+                current)
             {
 
                 Serial.printf(
-
                     "BTN,%d,0\n",
-
-                    encoderID
-
-                );
+                    encoderID);
 
                 network.sendEncoder(
-
                     encoderID,
-
-                    0
-
-                );
+                    0);
             }
 
             lastButton =
