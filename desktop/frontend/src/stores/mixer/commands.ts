@@ -7,7 +7,9 @@ import {
 
 export function createCommands() {
 
+
     return {
+
 
 
         handleCommand(
@@ -15,14 +17,45 @@ export function createCommands() {
         ) {
 
 
+
+            console.log(
+                "[HANDLE COMMAND]",
+                command
+            )
+
+
+
+            if (
+                !command
+            ) {
+                return
+            }
+
+
+
+
             if (
                 !isMixerWailsEnvironment()
-            )
+            ) {
 
                 return
 
+            }
 
 
+
+            console.log(
+                "[AVAILABLE CHANNELS]",
+                this.channels.map(
+                    (x: any) => x.id
+                )
+            )
+
+
+            console.log(
+                "[COMMAND CHANNEL]",
+                command.channel
+            )
 
             const channel =
                 this.channels.find(
@@ -32,29 +65,78 @@ export function createCommands() {
 
 
 
-            if (!channel)
+
+
+            if (
+                !channel
+            ) {
+
+                console.warn(
+                    "[CHANNEL NOT FOUND]",
+                    command.channel
+                )
+
                 return
+
+            }
+
+
+
 
 
 
 
             if (
+
                 command.type === "ENC"
+
             ) {
+
+
+
+                const newVolume =
+
+                    normalizeVolume(
+
+                        channel.volume +
+
+                        Number(command.value)
+
+                    )
+
+
+
+
+
+                console.log(
+
+                    "[SET VOLUME]",
+
+                    "CH",
+                    channel.id,
+
+                    channel.volume,
+
+                    "=>",
+
+                    newVolume
+
+                )
+
+
+
 
 
                 void this.setVolume(
 
                     channel.id,
 
-                    normalizeVolume(
-                        channel.volume +
-                        command.value
-                    ),
+                    newVolume,
 
                     false
 
                 )
+
 
 
                 return
@@ -65,23 +147,35 @@ export function createCommands() {
 
 
 
+
+
             if (
+
                 command.type === "BTN"
+
                 &&
+
                 command.value === 1
+
             ) {
 
 
                 this.toggleMute(
+
                     channel.id
+
                 )
 
+
+                return
 
             }
 
 
 
         },
+
+
 
 
 
@@ -93,9 +187,13 @@ export function createCommands() {
 
 
             void this.setVolume(
+
                 id,
+
                 volume,
+
                 false
+
             )
 
 

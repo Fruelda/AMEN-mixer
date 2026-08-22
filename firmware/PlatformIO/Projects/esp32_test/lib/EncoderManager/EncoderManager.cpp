@@ -125,6 +125,11 @@ void EncoderManager::update(AudioManager &audio)
         1);
 
     readButton(
+        EC2_SW,
+        lastButton2,
+        2);
+
+    readButton(
         EC3_SW,
         lastButton3,
         3);
