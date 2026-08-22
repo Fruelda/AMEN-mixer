@@ -11,12 +11,8 @@ public:
     void loop();
 
     void sendEncoder(
-
         uint8_t channel,
-
-        int value
-
-    );
+        int value);
 
     bool isConnected();
 };
