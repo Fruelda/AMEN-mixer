@@ -1,8 +1,11 @@
 #include <Arduino.h>
+
 #include <ArduinoOTA.h>
 
 #include "NetworkManager.h"
+
 #include "EncoderManager.h"
+
 #include "AudioManager.h"
 
 NetworkManager network;
@@ -20,35 +23,6 @@ void setupOTA()
     ArduinoOTA.setPassword(
         "amen123");
 
-    ArduinoOTA.onStart([]()
-                       {
-                           Serial.println(
-                               "OTA START");
-                       });
-
-    ArduinoOTA.onEnd([]()
-                     {
-                         Serial.println(
-                             "OTA COMPLETE");
-                     });
-
-    ArduinoOTA.onProgress(
-        [](unsigned int progress,
-           unsigned int total)
-        {
-            Serial.printf(
-                "OTA Progress: %u%%\n",
-                (progress * 100) / total);
-        });
-
-    ArduinoOTA.onError(
-        [](ota_error_t error)
-        {
-            Serial.printf(
-                "OTA ERROR: %u\n",
-                error);
-        });
-
     ArduinoOTA.begin();
 
     Serial.println(
@@ -62,8 +36,6 @@ void setup()
         115200);
 
     delay(1000);
-
-    Serial.println();
 
     Serial.println(
         "=== AMEN START ===");

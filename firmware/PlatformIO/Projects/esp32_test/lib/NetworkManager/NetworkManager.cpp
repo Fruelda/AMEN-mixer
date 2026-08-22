@@ -12,6 +12,12 @@ WebSocketsClient webSocket;
 
 bool wsConnected = false;
 
+unsigned long WIFI_RETRY =
+    5000;
+
+unsigned long WS_RETRY =
+    5000;
+
 // =================================================
 // BEGIN
 // =================================================
@@ -30,18 +36,11 @@ void NetworkManager::begin()
 }
 
 // =================================================
-// WIFI
+// WIFI CONNECT
 // =================================================
 
 void NetworkManager::connectWiFi()
 {
-
-    if (
-        WiFi.status() ==
-        WL_CONNECTED)
-    {
-        return;
-    }
 
     Serial.println(
         "Connecting WiFi...");
@@ -50,45 +49,61 @@ void NetworkManager::connectWiFi()
         WIFI_STA);
 
     WiFi.begin(
-
         WIFI_SSID,
-
-        WIFI_PASSWORD
-
-    );
-
-    while (
-
-        WiFi.status() !=
-        WL_CONNECTED
-
-    )
-    {
-
-        delay(500);
-
-        Serial.print(
-            ".");
-    }
-
-    Serial.println();
-
-    Serial.println(
-        "WiFi Connected");
-
-    Serial.print(
-        "IP : ");
-
-    Serial.println(
-        WiFi.localIP());
+        WIFI_PASSWORD);
 }
 
 // =================================================
-// WEBSOCKET
+// WIFI CHECK
+// =================================================
+
+void NetworkManager::checkWiFi()
+{
+
+    if (
+        WiFi.status() ==
+        WL_CONNECTED)
+    {
+
+        return;
+    }
+
+    if (
+        millis() -
+            lastWifiAttempt <
+        WIFI_RETRY)
+    {
+
+        return;
+    }
+
+    lastWifiAttempt =
+        millis();
+
+    Serial.println(
+        "WiFi reconnect...");
+
+    WiFi.disconnect();
+
+    WiFi.begin(
+        WIFI_SSID,
+        WIFI_PASSWORD);
+}
+
+// =================================================
+// WEBSOCKET CONNECT
 // =================================================
 
 void NetworkManager::connectWebSocket()
 {
+
+    if (
+        WiFi.status() !=
+        WL_CONNECTED)
+    {
+
+        return;
+    }
 
     Serial.println(
         "Connecting AMEN Server...");
@@ -108,82 +123,65 @@ void NetworkManager::connectWebSocket()
     webSocket.onEvent(
 
         [](WStype_t type,
-
            uint8_t *payload,
-
            size_t length)
 
         {
             switch (type)
-
             {
 
             case WStype_CONNECTED:
 
-            {
-
                 Serial.println(
                     "WebSocket Connected");
 
-                wsConnected = true;
+                wsConnected =
+                    true;
 
-                StaticJsonDocument<256> doc;
+                {
 
-                doc["type"] =
-                    "device.register";
+                    StaticJsonDocument<256> doc;
 
-                doc["id"] =
-                    DEVICE_ID;
+                    doc["type"] =
+                        "device.register";
 
-                doc["name"] =
-                    DEVICE_NAME;
+                    doc["id"] =
+                        DEVICE_ID;
 
-                String output;
+                    doc["name"] =
+                        DEVICE_NAME;
 
-                serializeJson(
+                    String output;
 
-                    doc,
+                    serializeJson(
+                        doc,
+                        output);
 
-                    output
-
-                );
-
-                webSocket.sendTXT(
-
-                    output
-
-                );
+                    webSocket.sendTXT(
+                        output);
+                }
 
                 break;
-            }
+
+            case WStype_DISCONNECTED:
+
+                Serial.println(
+                    "WebSocket Disconnected");
+
+                wsConnected =
+                    false;
+
+                break;
 
             case WStype_TEXT:
-
-            {
 
                 Serial.print(
                     "SERVER: ");
 
                 Serial.println(
-
-                    (char *)payload
-
-                );
+                    (char *)payload);
 
                 break;
-            }
-
-            case WStype_DISCONNECTED:
-
-            {
-
-                Serial.println(
-                    "WebSocket Disconnected");
-
-                wsConnected = false;
-
-                break;
-            }
 
             default:
 
@@ -204,10 +202,44 @@ void NetworkManager::connectWebSocket()
     );
 
     webSocket.setReconnectInterval(
+        5000);
+}
 
-        5000
+// =================================================
+// WEBSOCKET CHECK
+// =================================================
 
-    );
+void NetworkManager::checkWebSocket()
+{
+
+    if (
+        WiFi.status() !=
+        WL_CONNECTED)
+    {
+
+        return;
+    }
+
+    if (
+        wsConnected)
+    {
+
+        return;
+    }
+
+    if (
+        millis() -
+            lastWsAttempt <
+        WS_RETRY)
+    {
+
+        return;
+    }
+
+    lastWsAttempt =
+        millis();
+
+    connectWebSocket();
 }
 
 // =================================================
@@ -216,6 +248,10 @@ void NetworkManager::connectWebSocket()
 
 void NetworkManager::loop()
 {
+
+    checkWiFi();
+
+    checkWebSocket();
 
     webSocket.loop();
 }
@@ -231,7 +267,6 @@ void NetworkManager::sendEncoder(
     int value
 
 )
-
 {
 
     if (
@@ -258,18 +293,11 @@ void NetworkManager::sendEncoder(
     String output;
 
     serializeJson(
-
         doc,
-
-        output
-
-    );
+        output);
 
     webSocket.sendTXT(
-
-        output
-
-    );
+        output);
 }
 
 bool NetworkManager::isConnected()

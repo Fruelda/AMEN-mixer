@@ -2,6 +2,8 @@
 
 #include <Arduino.h>
 
+class AudioManager;
+
 class NetworkManager
 {
 
@@ -21,5 +23,11 @@ private:
 
     void connectWebSocket();
 
-    void sendRegister();
+    void checkWiFi();
+
+    void checkWebSocket();
+
+    unsigned long lastWifiAttempt = 0;
+
+    unsigned long lastWsAttempt = 0;
 };
