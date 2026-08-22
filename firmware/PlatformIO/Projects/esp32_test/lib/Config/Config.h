@@ -79,3 +79,14 @@
 // ===============================
 
 #define DEBUG_SERIAL true
+
+// ==========================
+// Encoder Direction
+// ==========================
+
+#define EC1_REVERSE false
+#define EC2_REVERSE false
+#define EC3_REVERSE false
+#define EC4_REVERSE true
+#define EC5_REVERSE true
+#define EC6_REVERSE false

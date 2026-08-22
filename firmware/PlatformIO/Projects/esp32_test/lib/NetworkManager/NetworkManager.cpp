@@ -2,263 +2,63 @@
 
 #include <WiFi.h>
 
-#include <WebSocketsClient.h>
-
-#include <ArduinoJson.h>
-
 #include "../Config/Config.h"
 
-WebSocketsClient webSocket;
+#include "../WebSocketManager/WebSocketManager.h"
 
-bool wsConnected = false;
+#include "../Protocol/Protocol.h"
 
-unsigned long WIFI_RETRY =
-    5000;
-
-unsigned long WS_RETRY =
-    5000;
-
-// =================================================
-// BEGIN
-// =================================================
+WebSocketManager socketManager;
 
 void NetworkManager::begin()
 {
 
-    Serial.println();
-
     Serial.println(
         "=== AMEN NETWORK START ===");
-
-    connectWiFi();
-
-    connectWebSocket();
-}
-
-// =================================================
-// WIFI CONNECT
-// =================================================
-
-void NetworkManager::connectWiFi()
-{
-
-    Serial.println(
-        "Connecting WiFi...");
 
     WiFi.mode(
         WIFI_STA);
 
     WiFi.begin(
+
         WIFI_SSID,
-        WIFI_PASSWORD);
-}
 
-// =================================================
-// WIFI CHECK
-// =================================================
+        WIFI_PASSWORD
 
-void NetworkManager::checkWiFi()
-{
-
-    if (
-        WiFi.status() ==
-        WL_CONNECTED)
-    {
-
-        return;
-    }
-
-    if (
-        millis() -
-            lastWifiAttempt <
-        WIFI_RETRY)
-    {
-
-        return;
-    }
-
-    lastWifiAttempt =
-        millis();
+    );
 
     Serial.println(
-        "WiFi reconnect...");
+        "Connecting WiFi...");
 
-    WiFi.disconnect();
-
-    WiFi.begin(
-        WIFI_SSID,
-        WIFI_PASSWORD);
-}
-
-// =================================================
-// WEBSOCKET CONNECT
-// =================================================
-
-void NetworkManager::connectWebSocket()
-{
-
-    if (
+    while (
         WiFi.status() !=
         WL_CONNECTED)
     {
 
-        return;
+        delay(500);
+
+        Serial.print(".");
     }
+
+    Serial.println();
 
     Serial.println(
-        "Connecting AMEN Server...");
+        "WiFi Connected");
 
     Serial.print(
-        "Server : ");
-
-    Serial.print(
-        AMEN_HOST);
-
-    Serial.print(
-        ":");
+        "IP : ");
 
     Serial.println(
-        AMEN_PORT);
+        WiFi.localIP());
 
-    webSocket.onEvent(
-
-        [](WStype_t type,
-           uint8_t *payload,
-           size_t length)
-
-        {
-            switch (type)
-            {
-
-            case WStype_CONNECTED:
-
-                Serial.println(
-                    "WebSocket Connected");
-
-                wsConnected =
-                    true;
-
-                {
-
-                    StaticJsonDocument<256> doc;
-
-                    doc["type"] =
-                        "device.register";
-
-                    doc["id"] =
-                        DEVICE_ID;
-
-                    doc["name"] =
-                        DEVICE_NAME;
-
-                    String output;
-
-                    serializeJson(
-                        doc,
-                        output);
-
-                    webSocket.sendTXT(
-                        output);
-                }
-
-                break;
-
-            case WStype_DISCONNECTED:
-
-                Serial.println(
-                    "WebSocket Disconnected");
-
-                wsConnected =
-                    false;
-
-                break;
-
-            case WStype_TEXT:
-
-                Serial.print(
-                    "SERVER: ");
-
-                Serial.println(
-                    (char *)payload);
-
-                break;
-
-            default:
-
-                break;
-            }
-        }
-
-    );
-
-    webSocket.begin(
-
-        AMEN_HOST,
-
-        AMEN_PORT,
-
-        AMEN_ENDPOINT
-
-    );
-
-    webSocket.setReconnectInterval(
-        5000);
+    socketManager.begin();
 }
-
-// =================================================
-// WEBSOCKET CHECK
-// =================================================
-
-void NetworkManager::checkWebSocket()
-{
-
-    if (
-        WiFi.status() !=
-        WL_CONNECTED)
-    {
-
-        return;
-    }
-
-    if (
-        wsConnected)
-    {
-
-        return;
-    }
-
-    if (
-        millis() -
-            lastWsAttempt <
-        WS_RETRY)
-    {
-
-        return;
-    }
-
-    lastWsAttempt =
-        millis();
-
-    connectWebSocket();
-}
-
-// =================================================
-// LOOP
-// =================================================
 
 void NetworkManager::loop()
 {
 
-    checkWiFi();
-
-    checkWebSocket();
-
-    webSocket.loop();
+    socketManager.loop();
 }
-
-// =================================================
-// SEND
-// =================================================
 
 void NetworkManager::sendEncoder(
 
@@ -269,39 +69,21 @@ void NetworkManager::sendEncoder(
 )
 {
 
-    if (
-        !wsConnected)
-    {
+    socketManager.send(
 
-        return;
-    }
+        createEncoderCommand(
 
-    StaticJsonDocument<256> doc;
+            channel,
 
-    doc["type"] =
-        "mixer.command";
+            value
 
-    doc["device"] =
-        DEVICE_ID;
+            )
 
-    doc["channel"] =
-        channel;
-
-    doc["value"] =
-        value;
-
-    String output;
-
-    serializeJson(
-        doc,
-        output);
-
-    webSocket.sendTXT(
-        output);
+    );
 }
 
 bool NetworkManager::isConnected()
 {
 
-    return wsConnected;
+    return socketManager.connected();
 }
