@@ -16,10 +16,10 @@ public:
 
     bool isConnected();
 
+    bool wifiConnected();
+
 private:
     void connectWiFi();
 
     void connectWebSocket();
-
-    void sendRegister();
 };
