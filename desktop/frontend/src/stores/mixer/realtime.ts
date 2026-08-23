@@ -14,6 +14,9 @@ export function createRealtime() {
     return {
 
 
+        // ====================================================
+        // SEND CHANNEL UPDATE
+        // ====================================================
 
         broadcastChannel(
             id: number
@@ -22,9 +25,9 @@ export function createRealtime() {
 
             const channel =
                 this.channels.find(
-                    (item: any) => item.id === id
+                    (item: any) =>
+                        item.id === id
                 )
-
 
 
             if (!channel)
@@ -32,29 +35,28 @@ export function createRealtime() {
 
 
 
-
             sendRealtime({
 
-                type: "CHANNEL_UPDATE",
+                type:
+                    "CHANNEL_UPDATE",
 
 
                 channel: {
 
-
-                    id: channel.id,
-
-
-                    volume: channel.volume,
+                    id:
+                        channel.id,
 
 
-                    muted: channel.muted
+                    volume:
+                        channel.volume,
 
+
+                    muted:
+                        channel.muted
 
                 }
 
-
             })
-
 
         },
 
@@ -62,18 +64,30 @@ export function createRealtime() {
 
 
 
+        // ====================================================
+        // RECEIVE CHANNEL UPDATE
+        // ====================================================
+
         applyRemoteUpdate(
             message: any
         ) {
 
 
             if (
-                message.type !== "CHANNEL_UPDATE"
-                ||
+                !message ||
                 !message.channel
-            )
+            ) {
 
                 return
+
+            }
+
+
+
+            console.log(
+                "[STORE CHANNEL UPDATE]",
+                message
+            )
 
 
 
@@ -85,8 +99,17 @@ export function createRealtime() {
 
 
 
-            if (!channel)
+            if (!channel) {
+
+                console.log(
+                    "[CHANNEL NOT FOUND]",
+                    message.channel.id
+                )
+
                 return
+
+            }
+
 
 
 
@@ -104,6 +127,7 @@ export function createRealtime() {
 
 
 
+
             if (
                 typeof message.channel.muted === "boolean"
             ) {
@@ -114,11 +138,11 @@ export function createRealtime() {
             }
 
 
+
         }
 
 
 
     }
-
 
 }

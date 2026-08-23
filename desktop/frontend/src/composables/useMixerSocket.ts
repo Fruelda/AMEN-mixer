@@ -13,7 +13,6 @@ import {
 } from "../stores/mixer"
 
 
-
 import type {
     RealtimeMessage
 } from "../types/mixer"
@@ -38,13 +37,6 @@ export function useMixerSocket() {
 
 
 
-
-
-
-
-    // ============================================================
-    // HANDLE REALTIME MESSAGE
-    // ============================================================
 
     function handleMessage(
         message: RealtimeMessage | any
@@ -77,18 +69,22 @@ export function useMixerSocket() {
 
 
 
-
-
-            // ====================================================
-            // FULL STATE
-            // ====================================================
+            // =========================================
+            // INITIAL MIXER STATE
+            // =========================================
 
             case "STATE":
 
 
-                mixerStore.setChannels(
+                if (
                     message.channels
-                )
+                ) {
+
+                    mixerStore.setChannels(
+                        message.channels
+                    )
+
+                }
 
 
                 return
@@ -98,62 +94,71 @@ export function useMixerSocket() {
 
 
 
-            // ====================================================
-            // UPDATE CHANNEL FROM BACKEND
-            // ====================================================
+            // =========================================
+            // DEVICE LIST
+            // =========================================
+
+            case "DEVICES":
+
+
+                if (
+                    message.devices &&
+                    mixerStore.setDevices
+                ) {
+
+                    mixerStore.setDevices(
+                        message.devices
+                    )
+
+                }
+
+
+                return
+
+
+
+
+
+
+            // =========================================
+            // CHANNEL UPDATE
+            // Android / Backend
+            // =========================================
 
             case "CHANNEL_UPDATE":
 
 
 
+                if (
+                    !message.channel
+                ) {
+
+                    return
+
+                }
+
+
+
                 mixerStore.applyRemoteUpdate({
 
-                    id:
-                        message.channel.id,
+                    channel: {
+
+                        id:
+                            message.channel.id,
 
 
-                    volume:
-                        message.channel.volume,
+                        volume:
+                            message.channel.volume,
 
 
-                    muted:
-                        message.channel.muted
+                        muted:
+                            message.channel.muted
+
+                    }
 
                 })
 
 
-                return
-
-
-
-
-
-
-
-            // ====================================================
-            // OLD COMMAND FORMAT
-            //
-            // {
-            //  type:"COMMAND",
-            //  command:{
-            //      type:"ENC",
-            //      channel:1,
-            //      value:1
-            //  }
-            // }
-            //
-            // ====================================================
-
-            case "COMMAND":
-
-
-
-                mixerStore.handleCommand(
-
-                    message.command
-
-                )
-
 
                 return
 
@@ -162,20 +167,11 @@ export function useMixerSocket() {
 
 
 
-
-            // ====================================================
-            // ESP32 FORMAT
-            //
-            // Encoder:
-            // value = 1 / -1
-            //
-            // Button:
-            // value = 0
-            //
-            // ====================================================
+            // =========================================
+            // ESP32 COMMAND
+            // =========================================
 
             case "mixer.command":
-
 
 
                 console.log(
@@ -185,38 +181,27 @@ export function useMixerSocket() {
 
 
 
-
-                // ==========================
                 // BUTTON MUTE
-                // ==========================
 
                 if (
                     Number(message.value) === 0
                 ) {
 
 
-
-                    console.log(
-                        "[MUTE PRESS]",
-                        "CHANNEL",
-                        message.channel
-                    )
-
-
-
                     mixerStore.handleCommand({
 
-                        type: "BTN",
+                        type:
+                            "BTN",
 
 
                         channel:
                             message.channel,
 
 
-                        value: 1
+                        value:
+                            1
 
                     })
-
 
 
                     return
@@ -226,15 +211,12 @@ export function useMixerSocket() {
 
 
 
-
-
-                // ==========================
-                // ENCODER VOLUME
-                // ==========================
+                // ENCODER
 
                 mixerStore.handleCommand({
 
-                    type: "ENC",
+                    type:
+                        "ENC",
 
 
                     channel:
@@ -247,7 +229,6 @@ export function useMixerSocket() {
                 })
 
 
-
                 return
 
 
@@ -255,48 +236,19 @@ export function useMixerSocket() {
 
 
 
+            // =========================================
+            // OLD COMMAND
+            // =========================================
 
-            // ====================================================
-            // DEVICES
-            // ====================================================
-
-            case "DEVICES":
-
+            case "COMMAND":
 
 
-                mixerStore.setDevices(
-
-                    message.devices
-
+                mixerStore.handleCommand(
+                    message.command
                 )
 
 
                 return
-
-
-
-
-
-
-
-
-            // ====================================================
-            // DEVICE STATUS
-            // ====================================================
-
-            case "DEVICE_STATUS":
-
-
-
-                mixerStore.setConnected(
-
-                    message.connected
-
-                )
-
-
-                return
-
 
 
 
@@ -306,13 +258,9 @@ export function useMixerSocket() {
             default:
 
 
-
-                console.warn(
-
+                console.log(
                     "[UNKNOWN MESSAGE]",
-
                     message
-
                 )
 
 
@@ -328,21 +276,7 @@ export function useMixerSocket() {
 
 
 
-
-
-
-
-
-    // ============================================================
-    // START
-    // ============================================================
-
     function start() {
-
-
-
-        connect()
-
 
 
         if (
@@ -355,21 +289,20 @@ export function useMixerSocket() {
 
 
 
+        connect()
+
 
 
         unsubscribe =
             subscribe(
-
                 handleMessage
-
             )
 
 
 
         console.log(
-            "[MIXER SOCKET] STARTED"
+            "[MIXER SOCKET STARTED]"
         )
-
 
     }
 
@@ -379,14 +312,7 @@ export function useMixerSocket() {
 
 
 
-
-
-    // ============================================================
-    // STOP
-    // ============================================================
-
-    function stop() {
-
+    onUnmounted(() => {
 
 
         if (
@@ -395,38 +321,12 @@ export function useMixerSocket() {
 
             unsubscribe()
 
+            unsubscribe = null
+
         }
 
 
-
-        unsubscribe = null
-
-
-
-        console.log(
-            "[MIXER SOCKET] STOPPED"
-        )
-
-
-    }
-
-
-
-
-
-
-
-
-
-    // ============================================================
-    // CLEANUP
-    // ============================================================
-
-    onUnmounted(
-
-        stop
-
-    )
+    })
 
 
 
@@ -435,11 +335,8 @@ export function useMixerSocket() {
 
     return {
 
-        start,
-
-        stop
+        start
 
     }
-
 
 }
