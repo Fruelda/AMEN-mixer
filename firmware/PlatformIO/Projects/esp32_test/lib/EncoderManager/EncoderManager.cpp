@@ -1,7 +1,8 @@
 #include "EncoderManager.h"
 
+#include <Arduino.h>
+
 #include "AudioManager.h"
-#include "Config.h"
 #include "NetworkManager.h"
 
 extern NetworkManager network;
@@ -163,18 +164,15 @@ void EncoderManager::readEncoder(
             direction = -1;
         }
 
-        // =====================================
-        // REVERSE ENCODER 4 & 5
-        // =====================================
-
+        //===========
+        // INVERT DIRECTION
         if (
             encoderID == 4 ||
             encoderID == 5)
         {
 
-            direction *= -1;
+            direction = -direction;
         }
-
         Serial.printf(
 
             "ENC,%d,%d\n",

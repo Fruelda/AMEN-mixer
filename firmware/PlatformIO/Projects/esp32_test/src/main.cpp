@@ -26,11 +26,7 @@ void setup()
     Serial.println(
         "=== AMEN START ===");
 
-    // WIFI + WEBSOCKET
-
     network.begin();
-
-    // OTA setelah WiFi
 
     ota.begin();
 

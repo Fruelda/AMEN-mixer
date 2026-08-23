@@ -10,9 +10,9 @@ WebSocketsClient webSocket;
 
 bool wsConnected = false;
 
-// ===============================
+// =================================================
 // BEGIN
-// ===============================
+// =================================================
 
 void NetworkManager::begin()
 {
@@ -27,9 +27,9 @@ void NetworkManager::begin()
     connectWebSocket();
 }
 
-// ===============================
+// =================================================
 // WIFI
-// ===============================
+// =================================================
 
 void NetworkManager::connectWiFi()
 {
@@ -50,24 +50,19 @@ void NetworkManager::connectWiFi()
 
         delay(500);
 
-        Serial.print(".");
+        Serial.print(
+            ".");
     }
 
     Serial.println();
 
     Serial.println(
         "WiFi Connected");
-
-    Serial.print(
-        "IP : ");
-
-    Serial.println(
-        WiFi.localIP());
 }
 
-// ===============================
+// =================================================
 // WEBSOCKET
-// ===============================
+// =================================================
 
 void NetworkManager::connectWebSocket()
 {
@@ -81,7 +76,8 @@ void NetworkManager::connectWebSocket()
     Serial.print(
         AMEN_HOST);
 
-    Serial.print(":");
+    Serial.print(
+        ":");
 
     Serial.println(
         AMEN_PORT);
@@ -103,28 +99,11 @@ void NetworkManager::connectWebSocket()
 
                 wsConnected = true;
 
-                {
+                webSocket.sendTXT(
 
-                    StaticJsonDocument<256> doc;
+                    "{\"type\":\"device.register\",\"id\":\"amen-mixer-01\",\"name\":\"AMEN Hardware Mixer\"}"
 
-                    doc["type"] =
-                        "device.register";
-
-                    doc["id"] =
-                        DEVICE_ID;
-
-                    doc["name"] =
-                        DEVICE_NAME;
-
-                    String msg;
-
-                    serializeJson(
-                        doc,
-                        msg);
-
-                    webSocket.sendTXT(
-                        msg);
-                }
+                );
 
                 break;
 
@@ -169,9 +148,9 @@ void NetworkManager::connectWebSocket()
         5000);
 }
 
-// ===============================
+// =================================================
 // LOOP
-// ===============================
+// =================================================
 
 void NetworkManager::loop()
 {
@@ -179,16 +158,21 @@ void NetworkManager::loop()
     webSocket.loop();
 }
 
-// ===============================
+// =================================================
 // SEND ENCODER
-// ===============================
+// =================================================
 
 void NetworkManager::sendEncoder(
+
     uint8_t channel,
-    int value)
+
+    int value
+
+)
 {
 
-    if (!wsConnected)
+    if (
+        !wsConnected)
     {
         return;
     }
@@ -207,19 +191,19 @@ void NetworkManager::sendEncoder(
     doc["value"] =
         value;
 
-    String msg;
+    String output;
 
     serializeJson(
         doc,
-        msg);
+        output);
 
     webSocket.sendTXT(
-        msg);
+        output);
 }
 
-// ===============================
+// =================================================
 // STATUS
-// ===============================
+// =================================================
 
 bool NetworkManager::isConnected()
 {
