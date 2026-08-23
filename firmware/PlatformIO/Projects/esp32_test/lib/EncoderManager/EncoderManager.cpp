@@ -6,58 +6,36 @@
 
 extern NetworkManager network;
 
+// =================================================
+// BEGIN
+// =================================================
+
 void EncoderManager::begin()
 {
-
-    // ==========================
-    // Encoder 1
-    // ==========================
 
     pinMode(EC1_CLK, INPUT_PULLUP);
     pinMode(EC1_DT, INPUT_PULLUP);
     pinMode(EC1_SW, INPUT_PULLUP);
 
-    // ==========================
-    // Encoder 2
-    // ==========================
-
     pinMode(EC2_CLK, INPUT_PULLUP);
     pinMode(EC2_DT, INPUT_PULLUP);
     pinMode(EC2_SW, INPUT_PULLUP);
-
-    // ==========================
-    // Encoder 3
-    // ==========================
 
     pinMode(EC3_CLK, INPUT_PULLUP);
     pinMode(EC3_DT, INPUT_PULLUP);
     pinMode(EC3_SW, INPUT_PULLUP);
 
-    // ==========================
-    // Encoder 4
-    // ==========================
-
     pinMode(EC4_CLK, INPUT_PULLUP);
     pinMode(EC4_DT, INPUT_PULLUP);
     pinMode(EC4_SW, INPUT_PULLUP);
-
-    // ==========================
-    // Encoder 5
-    // ==========================
 
     pinMode(EC5_CLK, INPUT_PULLUP);
     pinMode(EC5_DT, INPUT_PULLUP);
     pinMode(EC5_SW, INPUT_PULLUP);
 
-    // ==========================
-    // Encoder 6
-    // ==========================
-
     pinMode(EC6_CLK, INPUT_PULLUP);
     pinMode(EC6_DT, INPUT_PULLUP);
     pinMode(EC6_SW, INPUT_PULLUP);
-
-    // Simpan posisi awal
 
     lastCLK1 = digitalRead(EC1_CLK);
     lastCLK2 = digitalRead(EC2_CLK);
@@ -70,14 +48,15 @@ void EncoderManager::begin()
         "Encoder Manager Ready");
 }
 
-void EncoderManager::update(AudioManager &audio)
+// =================================================
+// UPDATE
+// =================================================
+
+void EncoderManager::update(
+    AudioManager &audio)
 {
 
     (void)audio;
-
-    // ==========================
-    // Rotary Encoder
-    // ==========================
 
     readEncoder(
         EC1_CLK,
@@ -115,10 +94,6 @@ void EncoderManager::update(AudioManager &audio)
         lastCLK6,
         6);
 
-    // ==========================
-    // Button
-    // ==========================
-
     readButton(
         EC1_SW,
         lastButton1,
@@ -150,6 +125,10 @@ void EncoderManager::update(AudioManager &audio)
         6);
 }
 
+// =================================================
+// ROTARY ENCODER
+// =================================================
+
 void EncoderManager::readEncoder(
 
     int clkPin,
@@ -166,14 +145,14 @@ void EncoderManager::readEncoder(
     int clk =
         digitalRead(clkPin);
 
-    if (clk != lastCLK)
+    if (
+        clk != lastCLK)
     {
 
         int direction;
 
         if (
-            digitalRead(dtPin) !=
-            clk)
+            digitalRead(dtPin) != clk)
         {
 
             direction = 1;
@@ -184,7 +163,17 @@ void EncoderManager::readEncoder(
             direction = -1;
         }
 
-        // Serial debug
+        // =====================================
+        // REVERSE ENCODER 4 & 5
+        // =====================================
+
+        if (
+            encoderID == 4 ||
+            encoderID == 5)
+        {
+
+            direction *= -1;
+        }
 
         Serial.printf(
 
@@ -195,8 +184,6 @@ void EncoderManager::readEncoder(
             direction
 
         );
-
-        // Kirim ke AMEN Windows
 
         network.sendEncoder(
 
@@ -210,6 +197,10 @@ void EncoderManager::readEncoder(
     }
 }
 
+// =================================================
+// BUTTON
+// =================================================
+
 void EncoderManager::readButton(
 
     int swPin,
@@ -222,10 +213,10 @@ void EncoderManager::readButton(
 {
 
     bool current =
-        digitalRead(swPin) ==
-        LOW;
+        digitalRead(swPin) == LOW;
 
-    if (current != lastButton)
+    if (
+        current != lastButton)
     {
 
         if (
