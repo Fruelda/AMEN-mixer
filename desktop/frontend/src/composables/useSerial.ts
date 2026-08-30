@@ -38,7 +38,7 @@ function isWailsEnvironment(): boolean {
   */
 
   return (
-    "__WAILS_RUNTIME__" in window
+    typeof (window as any).runtime !== "undefined"
   )
 }
 

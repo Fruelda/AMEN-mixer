@@ -33,6 +33,12 @@ type WSClient struct {
 type RealtimeServer struct {
 	clients map[*WSClient]bool
 
+	// localDevices are hardware devices connected directly to the desktop
+	// process, for example an ESP32 attached through USB serial. They are
+	// included in the same DEVICES payload as WebSocket clients so the UI does
+	// not need a second device-discovery model.
+	localDevices map[string]protocol.DeviceInfo
+
 	channels map[int]protocol.Channel
 
 	mu sync.Mutex
@@ -57,6 +63,10 @@ func NewRealtimeServer() *RealtimeServer {
 	return &RealtimeServer{
 		clients: make(
 			map[*WSClient]bool,
+		),
+
+		localDevices: make(
+			map[string]protocol.DeviceInfo,
 		),
 
 		channels: make(
@@ -479,6 +489,52 @@ func (s *RealtimeServer) handleMessage(
 }
 
 // ============================================================
+// LOCAL DEVICE REGISTRATION
+// ============================================================
+
+func (s *RealtimeServer) RegisterLocalDevice(
+	id string,
+	name string,
+	clientType string,
+) {
+	if s == nil || id == "" {
+		return
+	}
+
+	s.mu.Lock()
+	s.localDevices[id] = protocol.DeviceInfo{
+		ID:         id,
+		Name:       name,
+		ClientType: clientType,
+		Connected:  true,
+	}
+	s.mu.Unlock()
+
+	log.Printf("[DEVICE] %s connected locally\n", id)
+	s.BroadcastDeviceStatus(true)
+	s.BroadcastDevices()
+}
+
+func (s *RealtimeServer) UnregisterLocalDevice(id string) {
+	if s == nil || id == "" {
+		return
+	}
+
+	s.mu.Lock()
+	_, existed := s.localDevices[id]
+	delete(s.localDevices, id)
+	s.mu.Unlock()
+
+	if !existed {
+		return
+	}
+
+	log.Printf("[DEVICE] %s disconnected locally\n", id)
+	s.BroadcastDeviceStatus(false)
+	s.BroadcastDevices()
+}
+
+// ============================================================
 // CONNECTED DEVICES
 // ============================================================
 
@@ -492,8 +548,12 @@ func (s *RealtimeServer) getConnectedDevices() []protocol.DeviceInfo {
 		make(
 			[]protocol.DeviceInfo,
 			0,
-			len(s.clients),
+			len(s.clients)+len(s.localDevices),
 		)
+
+	for _, device := range s.localDevices {
+		devices = append(devices, device)
+	}
 
 	for client := range s.clients {
 
@@ -700,8 +760,16 @@ func (s *RealtimeServer) BroadcastJSON(
 func (s *RealtimeServer) BroadcastChannelUpdate(
 	id int,
 	volume int,
-	muted bool,
 ) {
+
+	/*
+		Audio Manager currently owns volume updates, but mute state is
+		synchronized through CHANNEL_UPDATE messages from the UI.
+
+		Do not attach channel.Muted from Audio Manager here because that
+		value may be stale and would overwrite a valid realtime mute state
+		after the next encoder movement.
+	*/
 
 	message :=
 		protocol.RealtimeMessage{
@@ -711,8 +779,6 @@ func (s *RealtimeServer) BroadcastChannelUpdate(
 				ID: id,
 
 				Volume: &volume,
-
-				Muted: &muted,
 			},
 		}
 

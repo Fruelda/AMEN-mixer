@@ -13,8 +13,20 @@ const listeners = new Set<
 // CONFIG
 // =====================================================
 
-const WS_URL =
-    "ws://192.168.1.44:8081/ws"
+function getWebSocketURL() {
+
+    if (
+        isWailsEnvironment()
+    ) {
+        return "ws://127.0.0.1:8081/ws"
+    }
+
+    const hostname =
+        window.location.hostname ||
+        "127.0.0.1"
+
+    return `ws://${hostname}:8081/ws`
+}
 
 
 // =====================================================
@@ -30,7 +42,7 @@ function isWailsEnvironment() {
     }
 
     return (
-        "__WAILS_RUNTIME__" in window
+        typeof (window as any).runtime !== "undefined"
     )
 }
 
@@ -314,7 +326,7 @@ export function connectRealtime() {
 
     socket =
         new WebSocket(
-            WS_URL
+            getWebSocketURL()
         )
 
 

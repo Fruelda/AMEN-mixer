@@ -22,6 +22,8 @@ type App struct {
 	audio *audio.Manager
 
 	realtime *RealtimeServer
+
+	serial *serial.Manager
 }
 
 // =============================================================
@@ -43,7 +45,6 @@ func (b *audioBridge) OnChannelUpdate(
 	b.server.BroadcastChannelUpdate(
 		channel.ID,
 		channel.Volume,
-		channel.Muted,
 	)
 }
 
@@ -91,14 +92,6 @@ func (a *App) startup(
 	// =========================================================
 	// INITIAL CHANNEL STATE
 	// =========================================================
-	//
-	// Seed pertama diambil dari Audio Manager.
-	//
-	// Setelah server berjalan,
-	// setiap CHANNEL_UPDATE akan memperbarui
-	// realtime state.
-	//
-	// =========================================================
 
 	a.realtime.SetInitialChannels(
 		a.audio.GetChannels(),
@@ -135,9 +128,7 @@ func (a *App) startup(
 	// =========================================================
 
 	manager, err :=
-		serial.New(
-			"/dev/cu.usbserial-1420",
-		)
+		serial.NewAuto()
 
 	if err != nil {
 
@@ -157,9 +148,37 @@ func (a *App) startup(
 		return
 	}
 
-	fmt.Println(
-		"[SERIAL] CONNECTED!",
+	fmt.Printf(
+		"[SERIAL] CONNECTED: %s\n",
+		manager.PortName(),
 	)
+
+	// Simpan manager di App supaya COM bisa ditutup
+	// dengan benar saat Wails shutdown.
+	a.serial = manager
+
+	// USB serial sekarang jadi sumber utama status hardware.
+	if a.realtime != nil {
+		a.realtime.RegisterLocalDevice(
+			"amen-mixer-01",
+			"AMEN Hardware Mixer",
+			"hardware",
+		)
+	}
+
+	manager.OnDisconnect =
+		func(err error) {
+			fmt.Println(
+				"[SERIAL] ESP32 DISCONNECTED:",
+				err,
+			)
+
+			if a.realtime != nil {
+				a.realtime.UnregisterLocalDevice(
+					"amen-mixer-01",
+				)
+			}
+		}
 
 	// =========================================================
 	// ESP32 COMMAND HANDLER
@@ -288,4 +307,23 @@ func (a *App) SetVolume(
 		id,
 		volume,
 	)
+}
+
+// =============================================================
+// SHUTDOWN
+// =============================================================
+
+func (a *App) shutdown(ctx context.Context) {
+	_ = ctx
+
+	fmt.Println("[APP] SHUTDOWN")
+
+	if a.serial != nil {
+		fmt.Println("[SERIAL] CLOSING")
+
+		a.serial.Close()
+		a.serial = nil
+
+		fmt.Println("[SERIAL] CLOSED")
+	}
 }

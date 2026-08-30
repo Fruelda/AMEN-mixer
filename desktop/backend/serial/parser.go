@@ -65,6 +65,14 @@ func Parse(line string) (*protocol.Command, error) {
 			return nil, err
 		}
 
+		// Firmware in this repository emits BTN,<channel>,0 on a press,
+		// while the desktop protocol defines 1 as "pressed". Normalize the
+		// existing firmware packet here so the rest of the app keeps one
+		// consistent command contract.
+		if value == 0 {
+			value = 1
+		}
+
 		return &protocol.Command{
 
 			Type: "BTN",
