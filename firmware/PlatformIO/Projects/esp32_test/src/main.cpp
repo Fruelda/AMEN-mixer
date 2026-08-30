@@ -5,39 +5,34 @@
 #include "AudioManager.h"
 
 NetworkManager network;
-
 EncoderManager encoder;
-
 AudioManager audio;
 
 void setup()
 {
+    Serial.begin(115200);
 
-  Serial.begin(
-      115200);
+    delay(1000);
 
-  delay(1000);
+    Serial.println();
+    Serial.println("=== AMEN START ===");
 
-  Serial.println();
+    network.begin();
 
-  Serial.println(
-      "=== AMEN START ===");
+    encoder.begin();
 
-  network.begin();
+    audio.begin();
 
-  encoder.begin();
-
-  audio.begin();
-
-  Serial.println(
-      "BOOT");
+    Serial.println("BOOT");
 }
 
 void loop()
 {
+    network.loop();
 
-  network.loop();
+    encoder.update(audio);
 
-  encoder.update(
-      audio);
+    // Tetap beri waktu untuk FreeRTOS/system task.
+    // Jangan dihapus meskipun WiFi realtime sedang disabled.
+    delay(1);
 }

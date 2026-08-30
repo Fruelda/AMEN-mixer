@@ -53,6 +53,17 @@
 #define EC6_SW 39
 
 // ===============================
+// NETWORK MODE
+// ===============================
+//
+// Desktop control is authoritative over USB serial.
+// Keep WiFi realtime disabled by default so the ESP32 does not maintain a
+// second connection to a host IP while it is already attached over USB.
+// Set this to true only when intentionally running the hardware over WiFi.
+
+#define AMEN_ENABLE_WIFI_REALTIME false
+
+// ===============================
 // WIFI CONFIG
 // ===============================
 

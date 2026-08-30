@@ -3,5 +3,5 @@
 
 void AudioManager::begin()
 {
-    Serial.println("BOOT");
+    // Reserved untuk audio initialization.
 }
