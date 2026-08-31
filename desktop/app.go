@@ -72,6 +72,7 @@ func NewApp() *App {
 func (a *App) startup(
 	ctx context.Context,
 ) {
+	a.ctx = ctx
 
 	fmt.Println(
 		"===================================",
@@ -89,12 +90,24 @@ func (a *App) startup(
 	// REALTIME SERVER
 	// =========================================================
 
-	a.realtime =
-		NewRealtimeServer()
+	a.realtime = NewRealtimeServer()
 
 	// =========================================================
 	// INITIAL CHANNEL STATE
 	// =========================================================
+	//
+	// Ambil kondisi volume/mute asli dari Windows
+	// sebelum dikirim ke frontend.
+	//
+	// Windows Core Audio
+	//        ↓
+	// audio.Manager
+	//        ↓
+	// realtime STATE
+	//
+	// =========================================================
+
+	a.audio.SyncWindowsState()
 
 	a.realtime.SetInitialChannels(
 		a.audio.GetChannels(),
@@ -125,23 +138,27 @@ func (a *App) startup(
 	fmt.Println(
 		"[AUDIO] EVENT BRIDGE CONNECTED",
 	)
-	go func() {
-	err := a.audio.DebugSessions()
 
-	if err != nil {
-		fmt.Println(
-			"[AUDIO DEBUG ERROR]",
-			err,
-		)
-	}
-}()
+	// =========================================================
+	// DEBUG WINDOWS AUDIO SESSION
+	// =========================================================
+
+	go func() {
+		err := a.audio.DebugSessions()
+
+		if err != nil {
+			fmt.Println(
+				"[AUDIO DEBUG ERROR]",
+				err,
+			)
+		}
+	}()
 
 	// =========================================================
 	// SERIAL / ESP32
 	// =========================================================
 
-	manager, err :=
-		serial.NewAuto()
+	manager, err := serial.NewAuto()
 
 	if err != nil {
 		fmt.Println(
@@ -183,163 +200,134 @@ func (a *App) startup(
 	// DISCONNECT HANDLER
 	// =========================================================
 
-	manager.OnDisconnect =
-		func(err error) {
-			fmt.Println(
-				"[SERIAL] ESP32 DISCONNECTED:",
-				err,
-			)
+	manager.OnDisconnect = func(
+		err error,
+	) {
+		fmt.Println(
+			"[SERIAL] ESP32 DISCONNECTED:",
+			err,
+		)
 
-			if a.realtime != nil {
-				a.realtime.UnregisterLocalDevice(
-					"amen-mixer-01",
-				)
-			}
+		if a.realtime != nil {
+			a.realtime.UnregisterLocalDevice(
+				"amen-mixer-01",
+			)
 		}
+	}
 
 	// =========================================================
 	// ESP32 COMMAND HANDLER
 	// =========================================================
-	//
-	// Hardware command diproses langsung di Go.
-	//
-	// ESP32
-	//   ↓
-	// serial.Manager
-	//   ↓
-	// audio.Manager
-	//   ↓
-	// Windows Core Audio
-	//   ↓
-	// audioBridge
-	//   ↓
-	// CHANNEL_UPDATE
-	//   ↓
-	// Frontend
-	//
-	// Tidak menggunakan serial-command Wails event untuk
-	// mengeksekusi audio.
-	//
-	// Tidak mengirim COMMAND WebSocket untuk dieksekusi ulang.
-	//
-	// Dengan demikian 1 physical encoder detent = 1 audio update.
-	// =========================================================
 
-	manager.OnCommand =
-		func(
-			cmd *protocol.Command,
-		) {
+	manager.OnCommand = func(
+		cmd *protocol.Command,
+	) {
+		fmt.Println(
+			"===================================",
+		)
+
+		fmt.Println(
+			"[SERIAL] COMMAND FROM ESP32",
+		)
+
+		fmt.Printf(
+			"[SERIAL] TYPE    : %s\n",
+			cmd.Type,
+		)
+
+		fmt.Printf(
+			"[SERIAL] CHANNEL : %d\n",
+			cmd.Channel,
+		)
+
+		fmt.Printf(
+			"[SERIAL] VALUE   : %d\n",
+			cmd.Value,
+		)
+
+		fmt.Println(
+			"===================================",
+		)
+
+		if a.audio == nil {
 			fmt.Println(
-				"===================================",
+				"[SERIAL] AUDIO MANAGER NOT AVAILABLE",
 			)
 
-			fmt.Println(
-				"[SERIAL] COMMAND FROM ESP32",
-			)
+			return
+		}
 
-			fmt.Printf(
-				"[SERIAL] TYPE    : %s\n",
-				cmd.Type,
-			)
+		// =================================================
+		// ENCODER
+		// =================================================
 
-			fmt.Printf(
-				"[SERIAL] CHANNEL : %d\n",
+		if cmd.Type == "ENC" {
+
+			channel := a.audio.GetChannel(
 				cmd.Channel,
 			)
 
-			fmt.Printf(
-				"[SERIAL] VALUE   : %d\n",
-				cmd.Value,
-			)
-
-			fmt.Println(
-				"===================================",
-			)
-
-			if a.audio == nil {
-				fmt.Println(
-					"[SERIAL] AUDIO MANAGER NOT AVAILABLE",
+			if channel == nil {
+				fmt.Printf(
+					"[SERIAL] Unknown channel: %d\n",
+					cmd.Channel,
 				)
 
 				return
 			}
 
-			// =================================================
-			// ENCODER
-			// =================================================
+			newVolume := channel.Volume + cmd.Value
 
-			if cmd.Type == "ENC" {
-				channel :=
-					a.audio.GetChannel(
-						cmd.Channel,
-					)
+			err := a.audio.SetVolume(
+				cmd.Channel,
+				newVolume,
+			)
 
-				if channel == nil {
-					fmt.Printf(
-						"[SERIAL] Unknown channel: %d\n",
-						cmd.Channel,
-					)
-
-					return
-				}
-
-				newVolume :=
-					channel.Volume +
-						cmd.Value
-
-				err :=
-					a.audio.SetVolume(
-						cmd.Channel,
-						newVolume,
-					)
-
-				if err != nil {
-					fmt.Printf(
-						"[SERIAL] SetVolume failed: %v\n",
-						err,
-					)
-				}
-
-				return
+			if err != nil {
+				fmt.Printf(
+					"[SERIAL] SetVolume failed: %v\n",
+					err,
+				)
 			}
 
-			// =================================================
-			// BUTTON
-			// =================================================
-
-			if cmd.Type == "BTN" &&
-				cmd.Value == 1 {
-
-				channel :=
-					a.audio.GetChannel(
-						cmd.Channel,
-					)
-
-				if channel == nil {
-					fmt.Printf(
-						"[SERIAL] Unknown channel: %d\n",
-						cmd.Channel,
-					)
-
-					return
-				}
-
-				err :=
-					a.audio.SetMute(
-						cmd.Channel,
-						!channel.Muted,
-					)
-
-				if err != nil {
-					fmt.Printf(
-						"[SERIAL] SetMute failed: %v\n",
-						err,
-					)
-				}
-
-				return
-			}
+			return
 		}
+
+		// =================================================
+		// BUTTON
+		// =================================================
+
+		if cmd.Type == "BTN" &&
+			cmd.Value == 1 {
+
+			channel := a.audio.GetChannel(
+				cmd.Channel,
+			)
+
+			if channel == nil {
+				fmt.Printf(
+					"[SERIAL] Unknown channel: %d\n",
+					cmd.Channel,
+				)
+
+				return
+			}
+
+			err := a.audio.SetMute(
+				cmd.Channel,
+				!channel.Muted,
+			)
+
+			if err != nil {
+				fmt.Printf(
+					"[SERIAL] SetMute failed: %v\n",
+					err,
+				)
+			}
+
+			return
+		}
+	}
 
 	// =========================================================
 	// START SERIAL
@@ -376,11 +364,6 @@ func (a *App) GetChannels() []models.Channel {
 // =============================================================
 // SET VOLUME
 // =============================================================
-//
-// Digunakan oleh UI.
-//
-// ESP32 tidak perlu melewati frontend.
-// =============================================================
 
 func (a *App) SetVolume(
 	id int,
@@ -400,11 +383,6 @@ func (a *App) SetVolume(
 
 // =============================================================
 // SET MUTE
-// =============================================================
-//
-// Digunakan oleh UI.
-//
-// ESP32 button diproses langsung pada OnCommand.
 // =============================================================
 
 func (a *App) SetMute(

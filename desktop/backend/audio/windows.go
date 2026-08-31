@@ -79,6 +79,7 @@ func NewWindowsAudio() *WindowsAudio {
 	return windowsAudio
 }
 
+
 // =====================================================
 // COM WORKER
 // =====================================================
@@ -940,6 +941,88 @@ func (w *WindowsAudio) setMasterMute(
 		nil
 }
 
+func (w *WindowsAudio) GetApplicationState(
+	app string,
+) (
+	int,
+	bool,
+	error,
+) {
+	app = normalizeAppName(app)
+
+	var (
+		volume int
+		muted  bool
+		found  bool
+	)
+
+	err := w.do(
+		func(worker *windowsAudioWorker) error {
+
+			_, _, err := worker.withMatchingSessions(
+				app,
+
+				func(
+					pid uint32,
+					processName string,
+					simpleVolume *wca.ISimpleAudioVolume,
+				) error {
+
+					var level float32
+
+					if err := simpleVolume.GetMasterVolume(
+						&level,
+					); err != nil {
+						return err
+					}
+
+					if err := simpleVolume.GetMute(
+						&muted,
+					); err != nil {
+						return err
+					}
+
+					volume = scalarToPercent(
+						level,
+					)
+
+					found = true
+
+					fmt.Printf(
+						"[WINDOWS AUDIO] sync %s => %d%% muted=%t process=%s\n",
+						app,
+						volume,
+						muted,
+						processName,
+					)
+
+					return nil
+				},
+			)
+
+			return err
+		},
+	)
+
+	if err != nil {
+		return 0,
+			false,
+			err
+	}
+
+	if !found {
+		return 0,
+			false,
+			fmt.Errorf(
+				"session not found: %s",
+				app,
+			)
+	}
+
+	return volume,
+		muted,
+		nil
+}
 // =====================================================
 // GET MASTER STATE
 // =====================================================

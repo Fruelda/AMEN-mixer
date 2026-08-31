@@ -76,6 +76,42 @@ func New() *Manager {
 
 	return manager
 }
+func (m *Manager) SyncWindowsState() {
+
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+
+	for i := range m.channels {
+
+		channel := &m.channels[i]
+
+		if channel.App == "master" {
+
+			volume, muted, err :=
+				m.windows.GetMasterState()
+
+			if err == nil {
+				channel.Volume = volume
+				channel.Muted = muted
+			}
+
+			continue
+		}
+
+
+		volume, muted, err :=
+			m.windows.GetApplicationState(
+				channel.App,
+			)
+
+		if err != nil {
+			continue
+		}
+
+		channel.Volume = volume
+		channel.Muted = muted
+	}
+}
 
 func (m *Manager) syncInitialMasterState() {
 	if m.windows == nil {
