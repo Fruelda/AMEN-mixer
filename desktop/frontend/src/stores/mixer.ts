@@ -2,6 +2,7 @@ import { reactive } from "vue"
 
 import {
   GetChannels,
+  SetMute,
   SetVolume
 } from "../../wailsjs/go/main/App"
 
@@ -62,9 +63,17 @@ const mockChannels: MixerChannel[] = [
     connected: true,
     selected: false
   },
-
   {
     id: 5,
+    name: "Steam",
+    app: "Steam",
+    volume: 60,
+    muted: false,
+    connected: false,
+    selected: false
+  },
+  {
+    id: 6,
     name: "Valeton",
     app: "valeton",
     volume: 60,
@@ -364,6 +373,9 @@ export const mixerStore = reactive({
           error
         )
 
+
+        await this.loadChannels()
+
       }
 
 
@@ -406,6 +418,145 @@ export const mixerStore = reactive({
       )
 
     }
+
+  },
+
+
+  // ========================================================
+  // MUTE
+  // ========================================================
+
+  async setMute(
+    id: number,
+    muted: boolean,
+    broadcast = true
+  ) {
+
+    const channel =
+      this.channels.find(
+        item =>
+          item.id === id
+      )
+
+
+    if (
+      !channel
+    ) {
+      return
+    }
+
+
+    if (
+      channel.muted === muted
+    ) {
+      return
+    }
+
+
+    // =====================================================
+    // WAILS AUDIO
+    // =====================================================
+
+    if (
+      isWailsEnvironment()
+    ) {
+
+      try {
+
+        await SetMute(
+          id,
+          muted
+        )
+
+
+        channel.muted =
+          muted
+
+
+        console.log(
+          `[WAILS] ${channel.name} mute: ${muted}`
+        )
+
+      }
+      catch (error) {
+
+        console.warn(
+          "[WAILS] SetMute failed",
+          error
+        )
+
+
+        await this.loadChannels()
+
+      }
+
+
+      /*
+      IMPORTANT
+
+      Jangan broadcast lagi dari frontend Wails.
+
+      SetMute()
+          ↓
+      Go Audio Manager
+          ↓
+      Audio Event Bridge
+          ↓
+      CHANNEL_UPDATE
+
+      Broadcast sudah dilakukan backend.
+      */
+
+      return
+
+    }
+
+
+    // =====================================================
+    // BROWSER / MOBILE
+    // =====================================================
+
+    channel.muted =
+      muted
+
+
+    if (
+      broadcast
+    ) {
+
+      this.broadcastChannel(
+        id
+      )
+
+    }
+
+  },
+
+
+  toggleMute(
+    id: number,
+    broadcast = true
+  ) {
+
+    const channel =
+      this.channels.find(
+        item =>
+          item.id === id
+      )
+
+
+    if (
+      !channel
+    ) {
+      return
+    }
+
+
+    void this.setMute(
+      id,
+      !channel.muted,
+      broadcast
+    )
 
   },
 
@@ -606,12 +757,9 @@ export const mixerStore = reactive({
       command.value === 1
     ) {
 
-      channel.muted =
-        !channel.muted
-
-
-      this.broadcastChannel(
-        channel.id
+      this.toggleMute(
+        channel.id,
+        false
       )
 
     }

@@ -10,6 +10,10 @@ export function Greet(arg1) {
   return window['go']['main']['App']['Greet'](arg1);
 }
 
+export function SetMute(arg1, arg2) {
+  return window['go']['main']['App']['SetMute'](arg1, arg2);
+}
+
 export function SetVolume(arg1, arg2) {
   return window['go']['main']['App']['SetVolume'](arg1, arg2);
 }

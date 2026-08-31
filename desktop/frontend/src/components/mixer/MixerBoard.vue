@@ -86,22 +86,9 @@ function toggleMute(
   id: number
 ) {
 
-  const channel =
-    mixerStore.channels.find(
-      item =>
-        item.id === id
-    )
-
-
-  if (
-    !channel
-  ) {
-    return
-  }
-
-
-  channel.muted =
-    !channel.muted
+  mixerStore.toggleMute(
+    id
+  )
 
 }
 
@@ -448,8 +435,13 @@ function toggleMute(
             flex-col
           ">
 
-          <ChannelRow v-for="channel in channels" :key="channel.id" :channel="channel" @set-volume="setVolume"
-            @toggle-mute="toggleMute" />
+          <ChannelRow
+            v-for="channel in channels"
+            :key="channel.id"
+            :channel="channel"
+            @set-volume="setVolume"
+            @toggle-mute="toggleMute"
+          />
 
         </div>
 

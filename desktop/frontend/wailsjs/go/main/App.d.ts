@@ -6,4 +6,6 @@ export function GetChannels():Promise<Array<models.Channel>>;
 
 export function Greet(arg1:string):Promise<string>;
 
+export function SetMute(arg1:number,arg2:boolean):Promise<void>;
+
 export function SetVolume(arg1:number,arg2:number):Promise<void>;

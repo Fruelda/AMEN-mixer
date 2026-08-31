@@ -30,8 +30,9 @@ type Manager struct {
 }
 
 // New opens an explicitly selected serial port.
-// Keep this function so the existing architecture can still use a fixed port
-// when needed.
+//
+// Keep this function so the existing architecture can still
+// use a fixed port when needed.
 func New(portName string) (*Manager, error) {
 	port, err := openPlatformPort(portName)
 	if err != nil {
@@ -47,13 +48,24 @@ func New(portName string) (*Manager, error) {
 // NewAuto detects the ESP32 serial port first, then opens it.
 //
 // Selection order:
+//
 //  1. AMEN_SERIAL_PORT environment variable, if explicitly set.
 //  2. USB serial number already present in this project's PlatformIO config.
 //  3. The only USB serial device, when exactly one exists.
 //  4. The only serial port, when exactly one exists.
 //
-// If Windows exposes several ambiguous ports, we deliberately return an error
-// instead of silently opening a random COM port.
+// IMPORTANT:
+//
+// On Windows, GetDetailedPortsList can occasionally return an empty
+// list even though a COM port is present in:
+//
+//	HKEY_LOCAL_MACHINE\HARDWARE\DEVICEMAP\SERIALCOMM
+//
+// Therefore, when detailed enumeration returns zero usable ports,
+// fall back to serial.GetPortsList().
+//
+// If Windows exposes several ambiguous ports, return an error instead
+// of silently opening a random COM port.
 func NewAuto() (*Manager, error) {
 	portName, err := DetectPort()
 	if err != nil {
@@ -64,37 +76,93 @@ func NewAuto() (*Manager, error) {
 }
 
 func DetectPort() (string, error) {
-	if configured := strings.TrimSpace(os.Getenv("AMEN_SERIAL_PORT")); configured != "" {
-		fmt.Printf("[SERIAL] Using AMEN_SERIAL_PORT=%s\n", configured)
+	// =========================================================
+	// EXPLICIT OVERRIDE
+	// =========================================================
+
+	if configured := strings.TrimSpace(
+		os.Getenv("AMEN_SERIAL_PORT"),
+	); configured != "" {
+
+		fmt.Printf(
+			"[SERIAL] Using AMEN_SERIAL_PORT=%s\n",
+			configured,
+		)
+
 		return configured, nil
 	}
 
+	// =========================================================
+	// DETAILED USB ENUMERATION
+	// =========================================================
+
 	ports, err := enumerator.GetDetailedPortsList()
 	if err != nil {
+		fmt.Printf(
+			"[SERIAL] Detailed enumeration failed: %v\n",
+			err,
+		)
+
 		return detectPortFallback(err)
 	}
 
+	// IMPORTANT:
+	//
+	// GetDetailedPortsList may succeed but return an empty slice
+	// on Windows even when GetPortsList/Windows registry can see
+	// COM3 or another valid serial port.
 	if len(ports) == 0 {
-		return "", fmt.Errorf("no serial ports found")
+		fmt.Println(
+			"[SERIAL] Detailed enumeration returned no ports; trying basic enumeration",
+		)
+
+		return detectPortFallback(
+			fmt.Errorf(
+				"detailed enumeration returned no ports",
+			),
+		)
 	}
 
-	usbPorts := make([]string, 0, len(ports))
-	allPorts := make([]string, 0, len(ports))
+	usbPorts := make(
+		[]string,
+		0,
+		len(ports),
+	)
+
+	allPorts := make(
+		[]string,
+		0,
+		len(ports),
+	)
 
 	for _, port := range ports {
-		if port == nil || strings.TrimSpace(port.Name) == "" {
+		if port == nil {
 			continue
 		}
 
-		allPorts = append(allPorts, port.Name)
+		portName := strings.TrimSpace(
+			port.Name,
+		)
+
+		if portName == "" {
+			continue
+		}
+
+		allPorts = append(
+			allPorts,
+			portName,
+		)
 
 		if port.IsUSB {
-			usbPorts = append(usbPorts, port.Name)
+			usbPorts = append(
+				usbPorts,
+				portName,
+			)
 		}
 
 		fmt.Printf(
 			"[SERIAL] Found port=%s usb=%t vid=%s pid=%s serial=%s product=%s manufacturer=%s\n",
-			port.Name,
+			portName,
 			port.IsUSB,
 			port.VID,
 			port.PID,
@@ -103,41 +171,104 @@ func DetectPort() (string, error) {
 			port.Manufacturer,
 		)
 
-		if port.IsUSB && strings.EqualFold(strings.TrimSpace(port.SerialNumber), preferredUSBSerial) {
+		serialNumber := strings.TrimSpace(
+			port.SerialNumber,
+		)
+
+		if port.IsUSB &&
+			strings.EqualFold(
+				serialNumber,
+				preferredUSBSerial,
+			) {
+
 			fmt.Printf(
 				"[SERIAL] Matched project USB serial %s on %s\n",
 				preferredUSBSerial,
-				port.Name,
+				portName,
 			)
 
-			return port.Name, nil
+			return portName, nil
 		}
 	}
 
-	if len(usbPorts) == 1 {
-		fmt.Printf("[SERIAL] Selected only USB serial port: %s\n", usbPorts[0])
-		return usbPorts[0], nil
-	}
+	// Detailed enumeration technically returned entries,
+	// but none had a usable serial port name.
+	//
+	// Fall back to the basic Windows serial port list.
+	if len(allPorts) == 0 {
+		fmt.Println(
+			"[SERIAL] Detailed enumeration returned no usable port names; trying basic enumeration",
+		)
 
-	if len(allPorts) == 1 {
-		fmt.Printf("[SERIAL] Selected only serial port: %s\n", allPorts[0])
-		return allPorts[0], nil
-	}
-
-	if len(usbPorts) > 1 {
-		return "", fmt.Errorf(
-			"multiple USB serial ports found (%s); set AMEN_SERIAL_PORT to the ESP32 COM port, for example COM5",
-			strings.Join(usbPorts, ", "),
+		return detectPortFallback(
+			fmt.Errorf(
+				"detailed enumeration returned no usable port names",
+			),
 		)
 	}
 
+	// =========================================================
+	// SINGLE USB PORT
+	// =========================================================
+
+	if len(usbPorts) == 1 {
+		fmt.Printf(
+			"[SERIAL] Selected only USB serial port: %s\n",
+			usbPorts[0],
+		)
+
+		return usbPorts[0], nil
+	}
+
+	// =========================================================
+	// SINGLE SERIAL PORT
+	// =========================================================
+
+	if len(allPorts) == 1 {
+		fmt.Printf(
+			"[SERIAL] Selected only serial port: %s\n",
+			allPorts[0],
+		)
+
+		return allPorts[0], nil
+	}
+
+	// =========================================================
+	// AMBIGUOUS USB PORTS
+	// =========================================================
+
+	if len(usbPorts) > 1 {
+		return "", fmt.Errorf(
+			"multiple USB serial ports found (%s); set AMEN_SERIAL_PORT to the ESP32 COM port, for example COM3",
+			strings.Join(
+				usbPorts,
+				", ",
+			),
+		)
+	}
+
+	// =========================================================
+	// AMBIGUOUS SERIAL PORTS
+	// =========================================================
+
 	return "", fmt.Errorf(
-		"multiple serial ports found (%s); set AMEN_SERIAL_PORT to the ESP32 COM port, for example COM5",
-		strings.Join(allPorts, ", "),
+		"multiple serial ports found (%s); set AMEN_SERIAL_PORT to the ESP32 COM port, for example COM3",
+		strings.Join(
+			allPorts,
+			", ",
+		),
 	)
 }
 
-func detectPortFallback(enumerationErr error) (string, error) {
+// detectPortFallback uses the basic serial enumeration.
+//
+// On Windows, go.bug.st/serial.GetPortsList() reads the system's
+// serial port registry mapping. This is intentionally used as the
+// fallback when USB metadata enumeration is unavailable or empty.
+func detectPortFallback(
+	enumerationErr error,
+) (string, error) {
+
 	ports, err := bugserial.GetPortsList()
 	if err != nil {
 		return "", fmt.Errorf(
@@ -161,6 +292,10 @@ func detectPortFallback(enumerationErr error) (string, error) {
 		)
 	}
 
+	// =========================================================
+	// SINGLE PORT
+	// =========================================================
+
 	if len(ports) == 1 {
 		fmt.Printf(
 			"[SERIAL] Selected only serial port: %s\n",
@@ -170,10 +305,17 @@ func detectPortFallback(enumerationErr error) (string, error) {
 		return ports[0], nil
 	}
 
+	// =========================================================
+	// MULTIPLE PORTS
+	// =========================================================
+
 	return "", fmt.Errorf(
 		"USB metadata enumeration failed (%v) and multiple serial ports exist (%s); set AMEN_SERIAL_PORT to the ESP32 COM port",
 		enumerationErr,
-		strings.Join(ports, ", "),
+		strings.Join(
+			ports,
+			", ",
+		),
 	)
 }
 
@@ -196,7 +338,11 @@ func (m *Manager) Start() {
 		m.portName,
 	)
 
-	chunk := make([]byte, serialChunkSize)
+	chunk := make(
+		[]byte,
+		serialChunkSize,
+	)
+
 	pending := make(
 		[]byte,
 		0,
@@ -204,7 +350,10 @@ func (m *Manager) Start() {
 	)
 
 	for {
-		n, err := m.port.Read(chunk)
+		n, err := m.port.Read(
+			chunk,
+		)
+
 		if err != nil {
 			fmt.Println(
 				"[SERIAL] READ ERROR:",
@@ -212,7 +361,9 @@ func (m *Manager) Start() {
 			)
 
 			if m.OnDisconnect != nil {
-				m.OnDisconnect(err)
+				m.OnDisconnect(
+					err,
+				)
 			}
 
 			return
@@ -238,9 +389,13 @@ func (m *Manager) Start() {
 			}
 
 			lineBytes := pending[:newline+1]
-			line := string(lineBytes)
 
-			remainder := len(pending) - (newline + 1)
+			line := string(
+				lineBytes,
+			)
+
+			remainder := len(pending) -
+				(newline + 1)
 
 			copy(
 				pending,
@@ -249,7 +404,9 @@ func (m *Manager) Start() {
 
 			pending = pending[:remainder]
 
-			m.handleLine(line)
+			m.handleLine(
+				line,
+			)
 		}
 
 		if len(pending) > maxPendingBytes {
@@ -263,13 +420,18 @@ func (m *Manager) Start() {
 	}
 }
 
-func (m *Manager) handleLine(line string) {
+func (m *Manager) handleLine(
+	line string,
+) {
 	fmt.Printf(
 		"[SERIAL] RAW: %q\n",
 		line,
 	)
 
-	cmd, err := Parse(line)
+	cmd, err := Parse(
+		line,
+	)
+
 	if err != nil {
 		// Firmware boot/status/debug lines share
 		// the serial port with commands.
@@ -282,12 +444,16 @@ func (m *Manager) handleLine(line string) {
 	)
 
 	if m.OnCommand != nil {
-		m.OnCommand(cmd)
+		m.OnCommand(
+			cmd,
+		)
 	}
 }
 
 func (m *Manager) Close() {
-	if m != nil && m.port != nil {
+	if m != nil &&
+		m.port != nil {
+
 		_ = m.port.Close()
 	}
 }
