@@ -41,15 +41,17 @@ func (b *audioBridge) OnChannelUpdate(
 
 	volume := channel.Volume
 	muted := channel.Muted
+	connected := channel.Connected
 
 	b.server.BroadcastJSON(
 		protocol.RealtimeMessage{
 			Type: protocol.MessageChannelUpdate,
 
 			Channel: &protocol.ChannelUpdate{
-				ID:     channel.ID,
-				Volume: &volume,
-				Muted:  &muted,
+				ID:        channel.ID,
+				Volume:    &volume,
+				Muted:     &muted,
+				Connected: &connected,
 			},
 		},
 	)
@@ -126,15 +128,15 @@ func (a *App) startup(
 		"[AUDIO] EVENT BRIDGE CONNECTED",
 	)
 	go func() {
-	err := a.audio.DebugSessions()
+		err := a.audio.DebugSessions()
 
-	if err != nil {
-		fmt.Println(
-			"[AUDIO DEBUG ERROR]",
-			err,
-		)
-	}
-}()
+		if err != nil {
+			fmt.Println(
+				"[AUDIO DEBUG ERROR]",
+				err,
+			)
+		}
+	}()
 
 	// =========================================================
 	// SERIAL / ESP32

@@ -68,6 +68,9 @@ export interface ChannelUpdate {
   muted?:
   boolean
 
+  connected?:
+  boolean
+
 }
 
 

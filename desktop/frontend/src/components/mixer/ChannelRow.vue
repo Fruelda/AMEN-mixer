@@ -186,7 +186,7 @@ function getVolumeColor() {
 
             md:text-[9px]
           " :class="!channel.connected
-              ? 'text-slate-500'
+               ? 'text-red-500 drop-shadow-[0_0_6px_rgba(239,68,68,0.8)]'
               : channel.muted
                 ? 'text-red-400'
                 : 'text-emerald-400'

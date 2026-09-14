@@ -450,6 +450,7 @@ export const mixerStore = reactive({
       channel.muted === muted
     ) {
       return
+      
     }
 
 
@@ -677,6 +678,15 @@ export const mixerStore = reactive({
         message.channel.muted
 
     }
+  if (
+    typeof message.channel.connected ===
+    "boolean"
+  ) {
+
+    channel.connected =
+      message.channel.connected
+
+  }
 
   },
 

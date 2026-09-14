@@ -108,4 +108,6 @@ type ChannelUpdate struct {
 	Volume *int `json:"volume,omitempty"`
 
 	Muted *bool `json:"muted,omitempty"`
+
+	Connected *bool `json:"connected,omitempty"`
 }

@@ -3,6 +3,7 @@ package audio
 import (
 	"fmt"
 	"sync"
+	"time"
 
 	"desktop/backend/models"
 )
@@ -15,6 +16,8 @@ type Manager struct {
 	windows *WindowsAudio
 
 	listener UpdateListener
+
+	stopStatus chan struct{}
 }
 
 // =====================================================
@@ -24,6 +27,7 @@ type Manager struct {
 func New() *Manager {
 	manager := &Manager{
 		windows: NewWindowsAudio(),
+		stopStatus: make(chan struct{}),
 
 		channels: []models.Channel{
 			{
@@ -73,6 +77,8 @@ func New() *Manager {
 	}
 
 	manager.syncInitialMasterState()
+
+	go manager.statusLoop()
 
 	return manager
 }
@@ -151,12 +157,14 @@ func (m *Manager) SetVolume(
 	id int,
 	volume int,
 ) error {
+
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
 	volume = clampVolume(volume)
 
 	for i := range m.channels {
+
 		channel := &m.channels[i]
 
 		if channel.ID != id {
@@ -166,6 +174,7 @@ func (m *Manager) SetVolume(
 		actualVolume := volume
 
 		if m.windows != nil {
+
 			var err error
 
 			actualVolume, err = m.windows.SetVolume(
@@ -202,10 +211,12 @@ func (m *Manager) SetMute(
 	id int,
 	muted bool,
 ) error {
+
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
 	for i := range m.channels {
+
 		channel := &m.channels[i]
 
 		if channel.ID != id {
@@ -215,6 +226,7 @@ func (m *Manager) SetMute(
 		actualMuted := muted
 
 		if m.windows != nil {
+
 			var err error
 
 			actualMuted, err = m.windows.SetMute(
@@ -250,11 +262,14 @@ func (m *Manager) SetMute(
 func (m *Manager) GetChannel(
 	id int,
 ) *models.Channel {
+
 	m.mutex.RLock()
 	defer m.mutex.RUnlock()
 
 	for _, channel := range m.channels {
+
 		if channel.ID == id {
+
 			copy := channel
 
 			return &copy
@@ -265,11 +280,62 @@ func (m *Manager) GetChannel(
 }
 
 // =====================================================
+// UPDATE CONNECTION STATUS
+// =====================================================
+
+func (m *Manager) UpdateConnection(
+	app string,
+	connected bool,
+) {
+	fmt.Printf(
+	"[MANAGER STATUS UPDATE] %s => %t\n",
+	app,
+	connected,
+)
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+
+	for i := range m.channels {
+
+		channel := &m.channels[i]
+
+		if channel.App != app {
+			continue
+		}
+
+		if channel.Connected == connected {
+			return
+		}
+
+		channel.Connected = connected
+
+		updated := *channel
+
+		fmt.Printf(
+			"[AUDIO STATUS] %s connected=%t\n",
+			channel.Name,
+			connected,
+		)
+
+		if m.listener != nil {
+			m.listener.OnChannelUpdate(
+				updated,
+			)
+		}
+
+		return
+	}
+}
+
+// =====================================================
 // CLOSE
 // =====================================================
 
 func (m *Manager) Close() {
+
 	m.mutex.Lock()
+
+	close(m.stopStatus)
 
 	windows := m.windows
 	m.windows = nil
@@ -282,6 +348,7 @@ func (m *Manager) Close() {
 }
 
 func (m *Manager) DebugSessions() error {
+
 	m.mutex.RLock()
 	defer m.mutex.RUnlock()
 
@@ -292,4 +359,56 @@ func (m *Manager) DebugSessions() error {
 	}
 
 	return m.windows.DebugSessions()
+}
+
+func (m *Manager) statusLoop() {
+
+	ticker := time.NewTicker(
+		2 * time.Second,
+	)
+
+	defer ticker.Stop()
+
+	for {
+
+		select {
+
+		case <-ticker.C:
+
+			if m.windows == nil {
+				continue
+			}
+
+			status, err := m.windows.GetApplicationStatus()
+
+			if err != nil {
+				continue
+			}
+
+
+			m.UpdateConnection(
+				"browser",
+				status["browser"],
+			)
+
+			m.UpdateConnection(
+				"music",
+				status["music"],
+			)
+
+			m.UpdateConnection(
+				"chat",
+				status["chat"],
+			)
+
+			m.UpdateConnection(
+				"game",
+				status["game"],
+			)
+
+
+		case <-m.stopStatus:
+			return
+		}
+	}
 }

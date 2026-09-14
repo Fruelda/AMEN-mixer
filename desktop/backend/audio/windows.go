@@ -48,6 +48,68 @@ type WindowsAudio struct {
 	initErr error
 }
 
+func (w *WindowsAudio) GetApplicationStatus() (map[string]bool, error) {
+
+	status := map[string]bool{
+		"browser": false,
+		"music":   false,
+		"chat":    false,
+		"game":    false,
+	}
+
+	err := w.do(
+		func(worker *windowsAudioWorker) error {
+
+			_, seen, err := worker.withMatchingSessions(
+				"",
+
+				func(
+					pid uint32,
+					processName string,
+					volume *wca.ISimpleAudioVolume,
+				) error {
+
+					processName = strings.ToLower(processName)
+					fmt.Println(
+					"[STATUS CHECK PROCESS]",
+					processName,
+)
+
+					for app := range status {
+
+						if appMatchesProcess(
+							app,
+							processName,
+						) {
+							status[app] = true
+						}
+					}
+
+					return nil
+				},
+			)
+
+			if err != nil {
+				return err
+			}
+
+			fmt.Println(
+				"[WINDOWS AUDIO STATUS]",
+				seen,
+			)
+			
+
+			return nil
+		},
+	)
+	fmt.Printf(
+	"[STATUS RESULT] %+v\n",
+	status,
+)
+
+	return status, err
+}
+
 // =====================================================
 // NEW WINDOWS AUDIO
 // =====================================================
@@ -407,7 +469,7 @@ func (worker *windowsAudioWorker) withMatchingSessions(
 					// MATCH APP
 					// =================================
 
-					if !appMatchesProcess(
+					if app != "" && !appMatchesProcess(
 						app,
 						processName,
 					) {
